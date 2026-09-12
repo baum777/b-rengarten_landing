@@ -2,6 +2,8 @@
 
 Hotel · Restaurant · Biergarten — digitaler Auftritt nach Design System `BG-DS-001`.
 
+**Live:** [baerengarten-landing.vercel.app](https://baerengarten-landing.vercel.app)
+
 ## Was das Haus ist
 
 Ein zeitgenössischer Gastgeber in der Schützenstraße 21, 88212 Ravensburg. Kein Themenpark, kein Folklore-Kostüm, keine Buchungsmaschine als erstes Bild.
