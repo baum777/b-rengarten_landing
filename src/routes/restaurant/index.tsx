@@ -13,7 +13,7 @@ export const Route = createFileRoute("/restaurant/")({
       {
         name: "description",
         content:
-          "Restaurant in Ravensburg. Schwäbische Küche, Grill, Tageskarte. Tisch reservieren.",
+          "Restaurant im Bärengarten Ravensburg. Hohe Speisenqualität und persönlicher Service. Tisch reservieren.",
       },
     ],
   }),
@@ -27,7 +27,7 @@ function RestaurantPage() {
         alt="Restaurantinnenraum mit Eichentischen und Blick in den Garten"
         eyebrow="Table"
         title="Gut essen. Gut bleiben. Gern wiederkommen."
-        kicker="Küche mit Herkunft und ohne Umstände. Ein Tisch, der ein Tisch bleibt."
+        kicker="Hohe Speisenqualität und guter Service. Ein Tisch im Haus."
         actions={[
           { to: "/restaurant/reservieren", label: "Tisch reservieren", variant: "wine" },
           { to: "/restaurant/speisekarte", label: "Speisen", variant: "inverse" },
@@ -44,7 +44,7 @@ function RestaurantPage() {
       <EditorialSplit
         eyebrow="Küche"
         title="Qualität, die man sieht."
-        body="Zwiebelrostbraten, Maultaschen, Grill — Teller, die man erkennt. Kein Schaum, keine Vergleiche, die wir nicht belegen."
+        body="Zwiebelrostbraten, Maultaschen, Grill. Teller, die man erkennt."
         image={images.foodRoast}
         alt="Angerichteter Braten mit Saft und Gemüse"
       />
@@ -53,10 +53,9 @@ function RestaurantPage() {
         <div className="content-wide section-pad grid gap-12 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <p className="eyebrow text-wine-700">Speisen</p>
-            <h2 className="text-display-md mt-4">Eine Auswahl. Keine ewige Karte.</h2>
+            <h2 className="text-display-md mt-4">Was heute auf dem Tisch liegt.</h2>
             <p className="mt-4 text-charcoal-600">
-              Was wir kochen, hängt vom Tag ab. Die aktuelle Karte liegt im Haus
-              und folgt auf Anfrage.
+              Die aktuelle Karte liegt im Haus und folgt auf Anfrage.
             </p>
           </div>
           <div className="lg:col-span-7 grid gap-10 sm:grid-cols-2">
@@ -80,7 +79,7 @@ function RestaurantPage() {
       <EditorialSplit
         eyebrow="Haltung"
         title="Qualität und Ehrlichkeit."
-        body="Wir kochen, was wir vertreten können. Herkunft aus der Region, wo sie Sinn ergibt — nicht als Slogan auf jeder Speisekarte."
+        body="Wir kochen, was wir vertreten können. Qualität bei Speisen und Service, Abend für Abend."
         image={images.kitchen}
         alt="Küche beim Anrichten von gegrilltem Rind"
         reverse
@@ -90,7 +89,7 @@ function RestaurantPage() {
         <div className="content-wide section-pad grid gap-12 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5">
             <p className="eyebrow text-wine-700">Reservieren</p>
-            <h2 className="text-display-md mt-4">Einen Tisch, keine Wartenummer.</h2>
+            <h2 className="text-display-md mt-4">Einen Tisch im Haus.</h2>
             <Photo
               src={images.hostService}
               alt="Service am gedeckten Tisch"

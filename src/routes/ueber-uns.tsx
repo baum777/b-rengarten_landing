@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { HostIcon } from "@/components/brand/icons";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
 import { images } from "@/lib/site";
@@ -15,7 +16,10 @@ function AboutPage() {
     <main className="pt-24 md:pt-28 pb-24">
       <header className="content-wide grid gap-10 lg:grid-cols-12">
         <div className="lg:col-span-6">
-          <p className="eyebrow text-wine-700">Host</p>
+          <p className="eyebrow text-wine-700 flex items-center gap-2">
+            <HostIcon className="h-4 w-4" />
+            Host
+          </p>
           <h1 className="text-display-md mt-3">
             Ein zeitgenössischer Gastgeber in Ravensburg.
           </h1>

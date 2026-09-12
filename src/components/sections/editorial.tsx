@@ -3,38 +3,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { Photo } from "@/components/media/photo";
 import { cn } from "@/lib/utils";
 
-export function Manifesto() {
-  return (
-    <section className="bg-paper-50">
-      <div className="content-reading section-pad text-center md:text-left">
-        <p className="eyebrow text-wine-700">Gastgeber</p>
-        <h2 className="text-display-md mt-5">
-          Gastfreundschaft darf ein bisschen unvernünftig sein.
-        </h2>
-        <p className="mt-6 text-lg text-charcoal-600 max-w-xl">
-          Qualität und Ehrlichkeit vor der großen Geste. Weniger Versprechen,
-          mehr Präsenz am Tisch.
-        </p>
-        <dl className="mt-12 grid gap-8 md:grid-cols-2 text-left">
-          <div>
-            <dt className="eyebrow text-charcoal-600">Qualität vor Quantität</dt>
-            <dd className="mt-2 text-charcoal-900">
-              Weniger Gerichte, klarere Zimmer, kein Durchlaufbetrieb als
-              Haltung.
-            </dd>
-          </div>
-          <div>
-            <dt className="eyebrow text-charcoal-600">Kein Umsatzplatz</dt>
-            <dd className="mt-2 text-charcoal-900">
-              Gäste haben Namen. Wenn etwas schiefgeht, sagen wir es geradeheraus.
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-  );
-}
-
 export function EditorialSplit({
   eyebrow,
   title,
@@ -101,46 +69,6 @@ export function EditorialSplit({
               {cta.label}
             </Link>
           ) : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function ReviewBand() {
-  const quotes = [
-    {
-      quote:
-        "Man merkt, dass hier jemand da ist. Nicht nur eine Rezeption, die abwickelt.",
-      source: "Gast aus Stuttgart",
-    },
-    {
-      quote:
-        "Gutes Essen, ruhiges Zimmer, und der Garten am Abend. Mehr braucht Ravensburg oft nicht.",
-      source: "Übernachtung unter der Woche",
-    },
-    {
-      quote:
-        "Wir kamen zu sechst, ohne große Ansage. Der Tisch war trotzdem ein Tisch, kein Durchlauf.",
-      source: "Abend im Restaurant",
-    },
-  ];
-
-  return (
-    <section className="bg-paper-100">
-      <div className="content-wide section-pad">
-        <p className="eyebrow text-charcoal-600">Stimmen</p>
-        <div className="mt-10 grid gap-12 lg:grid-cols-3">
-          {quotes.map((item) => (
-            <figure key={item.source}>
-              <blockquote className="font-display text-2xl md:text-[1.75rem] leading-snug tracking-tight text-charcoal-900">
-                {item.quote}
-              </blockquote>
-              <figcaption className="mt-4 text-sm text-charcoal-600">
-                {item.source}
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </div>
     </section>

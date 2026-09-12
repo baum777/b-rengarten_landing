@@ -72,12 +72,13 @@ export function PageHero({
 
 export function HomeHero() {
   return (
-    <section className="relative isolate min-h-[78svh] md:min-h-[min(92vh,980px)] flex items-end overflow-hidden bg-green-950 text-paper-50">
+    <section className="relative isolate min-h-[75svh] md:min-h-[min(90vh,980px)] flex items-end overflow-hidden bg-green-950 text-paper-50">
       <Photo
         src="/images/hero-garden.jpg"
         alt="Abendlicher Biergarten unter alten Kastanien, gedeckte Tische im warmen Licht"
         priority
         className="absolute inset-0 h-full w-full"
+        imgClassName="object-[center_42%]"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-green-950/75 via-green-950/30 to-green-950/20" />
       <div className="relative content-wide w-full pb-16 pt-32 md:pb-28">

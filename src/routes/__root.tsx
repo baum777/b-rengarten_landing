@@ -40,7 +40,6 @@ const jsonLd = {
     {
       "@type": "Restaurant",
       name: "Bärengarten Restaurant",
-      servesCuisine: ["Schwäbisch", "Deutsch"],
       address: {
         "@type": "PostalAddress",
         streetAddress: site.address.street,
@@ -61,7 +60,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Hotel, Restaurant und Biergarten in Ravensburg. Persönliche Gastgeber, klare Zimmer, Küche mit Haltung.",
+          "Bärengarten Ravensburg — Hotel mit Restaurant und Biergarten in Ravensburg. Qualität, Ehrlichkeit und persönliche Gastfreundschaft.",
       },
       { name: "theme-color", content: "#1F3B2E" },
     ],
