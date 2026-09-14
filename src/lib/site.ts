@@ -2,7 +2,7 @@ export const site = {
   name: "Bärengarten",
   location: "Ravensburg",
   descriptor: "Hotel · Restaurant · Biergarten",
-  tagline: "Unvernünftig gastfreundlich.",
+  tagline: "Unvernünftige Gastfreundschaft",
   manifesto: "Gastfreundschaft darf ein bisschen unvernünftig sein.",
   address: {
     street: "Schützenstraße 21",
@@ -37,6 +37,7 @@ export const nav = [
   { to: "/restaurant", label: "Restaurant" },
   { to: "/biergarten", label: "Biergarten" },
   { to: "/anlaesse", label: "Anlässe" },
+  { to: "/ueber-uns", label: "Über uns" },
   { to: "/kontakt", label: "Kontakt" },
 ] as const;
 
@@ -70,8 +71,8 @@ export const rooms = [
   {
     slug: "business",
     name: "Business",
-    subtitle: "Ruhig arbeiten, klar schlafen.",
-    facts: ["1–2 Personen", "Schreibtisch am Fenster", "WLAN", "Ruhige Lage"],
+    subtitle: "Arbeiten und schlafen, klar getrennt.",
+    facts: ["1–2 Personen", "Schreibtisch am Fenster", "WLAN", "In der Stadt"],
     image: images.roomDesk,
     alt: "Hotelzimmer mit Schreibtisch am Fenster und gemachtem Bett",
   },
@@ -81,7 +82,7 @@ export const rooms = [
     subtitle: "Mehr Raum, dieselbe Ruhe.",
     facts: ["2 Personen", "Sitzbereich", "Viel Licht", "Für längere Aufenthalte"],
     image: images.roomArrival,
-    alt: "Großzügiges Zimmer mit Ankunftskoffer und ruhigem Doppelbett",
+    alt: "Großzügiges Zimmer mit Ankunftskoffer und gemachtem Doppelbett",
   },
 ] as const;
 
@@ -95,7 +96,7 @@ export const menuPreview = [
       },
       {
         name: "Zwiebelrostbraten",
-        note: "Saft, Röstaromen, saisonales Gemüse.",
+        note: "Saft, Röstaromen, Gemüse.",
       },
       {
         name: "Gegrilltes Rind vom Rost",
@@ -107,12 +108,12 @@ export const menuPreview = [
     group: "Garten & Tisch",
     items: [
       {
-        name: "Tageskarte aus der Region",
+        name: "Tageskarte",
         note: "Was die Küche heute ehrlich kochen kann.",
       },
       {
         name: "Ausgewählte Weine & Bier vom Fass",
-        note: "Zum Essen, nicht als Dekoration.",
+        note: "Zum Essen.",
       },
       {
         name: "Süßes vom Haus",
@@ -140,7 +141,7 @@ export const occasions = [
 export const faqs = [
   {
     q: "Wie reise ich an?",
-    a: "Schützenstraße 21, 88212 Ravensburg — wenige Minuten zu Fuß zur Altstadt. Parken vor Ort nach Verfügbarkeit. Bahnhof Ravensburg ist fußläufig erreichbar.",
+    a: "Schützenstraße 21, 88212 Ravensburg. Gut erreichbar in der Stadt. Parken vor Ort nach Verfügbarkeit.",
   },
   {
     q: "Wann kann ich einchecken?",
@@ -172,17 +173,4 @@ export const faqs = [
   },
 ] as const;
 
-export const reviews = [
-  {
-    quote: "Man merkt, dass hier jemand da ist. Nicht nur eine Rezeption, die abwickelt.",
-    source: "Gast aus Stuttgart",
-  },
-  {
-    quote: "Gutes Essen, ruhiges Zimmer, und der Garten am Abend. Mehr braucht Ravensburg oft nicht.",
-    source: "Übernachtung unter der Woche",
-  },
-  {
-    quote: "Wir kamen zu sechst, ohne große Ansage. Der Tisch war trotzdem ein Tisch, kein Durchlauf.",
-    source: "Abend im Restaurant",
-  },
-] as const;
+export const reviews: readonly { quote: string; source: string }[] = [];

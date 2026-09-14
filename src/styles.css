@@ -183,6 +183,33 @@
   }
 }
 
+.garden-frame {
+  --garden-cut: clamp(1.75rem, 7vw, 3.25rem);
+  -webkit-mask-image: radial-gradient(
+    circle at 100% 100%,
+    transparent var(--garden-cut),
+    #000 calc(var(--garden-cut) + 1px)
+  );
+  mask-image: radial-gradient(
+    circle at 100% 100%,
+    transparent var(--garden-cut),
+    #000 calc(var(--garden-cut) + 1px)
+  );
+}
+
+.garden-frame-bl {
+  -webkit-mask-image: radial-gradient(
+    circle at 0 100%,
+    transparent var(--garden-cut),
+    #000 calc(var(--garden-cut) + 1px)
+  );
+  mask-image: radial-gradient(
+    circle at 0 100%,
+    transparent var(--garden-cut),
+    #000 calc(var(--garden-cut) + 1px)
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

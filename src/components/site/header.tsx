@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
 import { BrandLink } from "@/components/brand/logo";
+import { CloseIcon, MenuNavIcon } from "@/components/brand/icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { nav } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ export function SiteHeader() {
         <BrandLink inverted={inverted} />
 
         <nav
-          className="hidden lg:flex items-center gap-8"
+          className="hidden lg:flex items-center gap-5 xl:gap-8"
           aria-label="Hauptnavigation"
         >
           {nav.map((item) => (
@@ -70,7 +70,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden xl:flex items-center gap-2">
           <Link
             to="/hotel/buchen"
             className={buttonVariants({
@@ -100,7 +100,7 @@ export function SiteHeader() {
           aria-label={open ? "Menü schließen" : "Menü öffnen"}
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <CloseIcon className="h-5 w-5" /> : <MenuNavIcon className="h-5 w-5" />}
         </button>
       </div>
 
@@ -123,10 +123,10 @@ export function SiteHeader() {
               </Link>
             ))}
             <Link
-              to="/ueber-uns"
+              to="/ikonografie"
               className="min-h-12 flex items-center font-display text-2xl tracking-tight"
             >
-              Über uns
+              Ikonografie
             </Link>
             <div className="mt-6 flex flex-col gap-3">
               <Button asChild variant="wine">

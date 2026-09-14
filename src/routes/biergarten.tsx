@@ -26,8 +26,8 @@ function GardenPage() {
         image={images.heroGarden}
         alt="Abendlicher Biergarten unter Kastanien mit warmem Licht"
         eyebrow="Garden"
-        title="Unter den Bäumen. In der Stadt."
-        kicker="Kein Festzelt, kein Kostüm. Ein Garten zum Sitzen, Essen und Bleiben."
+        title="Draußen zusammensitzen."
+        kicker="Biergarten, Restaurant und Gastgeber gehören hier zum selben Haus."
         actions={[
           { to: "/restaurant/reservieren", label: "Tisch im Haus", variant: "inverse" },
           { to: "/kontakt", label: "Heute nachfragen", variant: "wine" },
@@ -46,7 +46,7 @@ function GardenPage() {
       <EditorialSplit
         eyebrow="Atmosphäre"
         title="Schatten, Kies, lange Tische."
-        body="Alte Kastanien, Platz zum Atmen, Teller und Gläser im Zusammenhang. Familien gehören dazu. Lederhosen nicht."
+        body="Alte Kastanien, Platz zum Atmen, Teller und Gläser im Zusammenhang. Für Kollegen, Freunde und Familien."
         image={images.gardenDay}
         alt="Biergarten am Tag, Tische unter Bäumen"
       />
@@ -66,7 +66,7 @@ function GardenPage() {
             <h2 className="text-display-md mt-4">Dieselbe Küche. Mehr Luft.</h2>
             <p className="mt-5 text-lg text-charcoal-600">
               Was innen gekocht wird, steht auch außen — soweit das Wetter mitspielt.
-              Bier vom Fass, Wein zum Essen, kein Themenpark.
+              Bier vom Fass, Wein zum Essen.
             </p>
             <Link
               to="/restaurant/speisekarte"

@@ -5,6 +5,11 @@ import { BookingBar } from "@/components/forms/inquiry-forms";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
 import { hours, images, rooms } from "@/lib/site";
+import {
+  ArrivalIcon,
+  BreakfastIcon,
+  ClockIcon,
+} from "@/components/brand/icons";
 
 export const Route = createFileRoute("/hotel/")({
   component: HotelPage,
@@ -14,7 +19,7 @@ export const Route = createFileRoute("/hotel/")({
       {
         name: "description",
         content:
-          "Ruhige Zimmer in Ravensburg. Klare Fakten zu Anreise, Check-in und Frühstück. Verfügbarkeit persönlich anfragen.",
+          "Zimmer in Ravensburg. Klare Fakten zu Anreise, Check-in und Frühstück. Verfügbarkeit persönlich anfragen.",
       },
     ],
   }),
@@ -27,11 +32,11 @@ function HotelPage() {
         image={images.roomComfort}
         alt="Helles Komfortzimmer mit Leinenbett und Schreibtisch"
         eyebrow="Stay"
-        title="Ankommen. Durchatmen. Weiterkommen."
-        kicker="Saubere Zimmer, ruhige Lage in der Stadt, kein unnötiges Zeremoniell."
+        title="Ankommen muss nicht kompliziert sein."
+        kicker="Saubere Zimmer für Ankommen, Übernachten und Weiterziehen."
         actions={[
-          { to: "/hotel/buchen", label: "Verfügbarkeit", variant: "wine" },
-          { to: "/hotel/zimmer", label: "Zimmer", variant: "inverse" },
+          { to: "/hotel/zimmer", label: "Zimmer ansehen", variant: "inverse" },
+          { to: "/hotel/buchen", label: "Verfügbarkeit prüfen", variant: "wine" },
         ]}
       />
 
@@ -85,7 +90,7 @@ function HotelPage() {
           <div className="lg:col-span-5">
             <p className="eyebrow text-wine-700">Anreise</p>
             <h2 className="text-display-md mt-4">
-              Check-in ohne Theater.
+              Unkomplizierter Check-in.
             </h2>
             <p className="mt-5 text-charcoal-600">
               Sagen Sie uns, wann Sie da sind. Die Rezeption ist tagsüber
@@ -95,20 +100,32 @@ function HotelPage() {
           </div>
           <dl className="lg:col-span-7 grid gap-6 sm:grid-cols-2 text-sm">
             <div>
-              <dt className="eyebrow text-charcoal-600">Check-in</dt>
+              <dt className="eyebrow text-charcoal-600 flex items-center gap-2">
+                <ArrivalIcon className="h-4 w-4" />
+                Check-in
+              </dt>
               <dd className="mt-2 text-lg">{hours.checkIn}</dd>
             </div>
             <div>
-              <dt className="eyebrow text-charcoal-600">Check-out</dt>
+              <dt className="eyebrow text-charcoal-600 flex items-center gap-2">
+                <ClockIcon className="h-4 w-4" />
+                Check-out
+              </dt>
               <dd className="mt-2 text-lg">{hours.checkOut}</dd>
             </div>
             <div>
-              <dt className="eyebrow text-charcoal-600">Rezeption</dt>
+              <dt className="eyebrow text-charcoal-600 flex items-center gap-2">
+                <ClockIcon className="h-4 w-4" />
+                Rezeption
+              </dt>
               <dd className="mt-2">{hours.receptionWeek}</dd>
               <dd className="text-charcoal-600">{hours.receptionWeekend}</dd>
             </div>
             <div>
-              <dt className="eyebrow text-charcoal-600">Frühstück</dt>
+              <dt className="eyebrow text-charcoal-600 flex items-center gap-2">
+                <BreakfastIcon className="h-4 w-4" />
+                Frühstück
+              </dt>
               <dd className="mt-2">{hours.breakfastWeek}</dd>
               <dd className="text-charcoal-600">{hours.breakfastWeekend}</dd>
             </div>
