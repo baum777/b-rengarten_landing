@@ -1,24 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { HomeHero, CtaBand } from "@/components/sections/page-hero";
-import { PortalGrid } from "@/components/sections/portals";
-import {
-  RestaurantEditorial,
-  HotelUtility,
-  HostManifesto,
-  GardenFeature,
-  LocationSection,
-  ProofPrinciples,
-} from "@/components/sections/home";
+import { HomeHero } from "@/components/sections/page-hero";
 
 export const Route = createFileRoute("/")({
   component: Home,
   head: () => ({
     meta: [
-      { title: "Bärengarten Ravensburg — Hotel, Restaurant, Biergarten" },
+      { title: "Unvernünftige Gastfreundschaft — Bärengarten Ravensburg" },
       {
         name: "description",
         content:
-          "Bärengarten Ravensburg — Hotel mit Restaurant und Biergarten in Ravensburg. Qualität, Ehrlichkeit und persönliche Gastfreundschaft.",
+          "Bärengarten Ravensburg — Hotel mit Restaurant und Biergarten. Unvernünftige Gastfreundschaft.",
       },
     ],
   }),
@@ -26,16 +17,8 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   return (
-    <main>
+    <main className="h-dvh overflow-hidden">
       <HomeHero />
-      <PortalGrid />
-      <RestaurantEditorial />
-      <HotelUtility />
-      <HostManifesto />
-      <GardenFeature />
-      <LocationSection />
-      <ProofPrinciples />
-      <CtaBand />
     </main>
   );
 }

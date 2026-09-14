@@ -4,6 +4,7 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
@@ -11,6 +12,8 @@ import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { MobileActionBar } from "@/components/site/mobile-bar";
 import { site } from "@/lib/site";
+import { cn } from "@/lib/utils";
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Bärengarten Ravensburg";
@@ -82,12 +85,30 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isHome = pathname === "/";
+
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.toggle("overflow-hidden", isHome);
+    document.body.classList.toggle("overflow-hidden", isHome);
+    return () => {
+      html.classList.remove("overflow-hidden");
+      document.body.classList.remove("overflow-hidden");
+    };
+  }, [isHome]);
+
   return (
     <html lang="de" suppressHydrationWarning className="antialiased">
       <head>
         <HeadContent />
       </head>
-      <body className="bg-paper-50 text-charcoal-900 pb-14 md:pb-0">
+      <body
+        className={cn(
+          "bg-paper-50 text-charcoal-900",
+          isHome ? "h-dvh overflow-hidden" : "pb-14 md:pb-0",
+        )}
+      >
         <PreviewHostBridge />
         <a
           href="#inhalt"
@@ -100,8 +121,8 @@ function RootDocument() {
           <div id="inhalt">
             <Outlet />
           </div>
-          <SiteFooter />
-          <MobileActionBar />
+          {isHome ? null : <SiteFooter />}
+          {isHome ? null : <MobileActionBar />}
         </AuthProvider>
         <script
           type="application/ld+json"

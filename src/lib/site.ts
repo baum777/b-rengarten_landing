@@ -2,7 +2,7 @@ export const site = {
   name: "Bärengarten",
   location: "Ravensburg",
   descriptor: "Hotel · Restaurant · Biergarten",
-  tagline: "Unvernünftig gastfreundlich.",
+  tagline: "Unvernünftige Gastfreundschaft",
   manifesto: "Gastfreundschaft darf ein bisschen unvernünftig sein.",
   address: {
     street: "Schützenstraße 21",
@@ -37,6 +37,7 @@ export const nav = [
   { to: "/restaurant", label: "Restaurant" },
   { to: "/biergarten", label: "Biergarten" },
   { to: "/anlaesse", label: "Anlässe" },
+  { to: "/ueber-uns", label: "Über uns" },
   { to: "/kontakt", label: "Kontakt" },
 ] as const;
 

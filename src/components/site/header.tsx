@@ -53,7 +53,7 @@ export function SiteHeader() {
         <BrandLink inverted={inverted} />
 
         <nav
-          className="hidden lg:flex items-center gap-8"
+          className="hidden lg:flex items-center gap-5 xl:gap-8"
           aria-label="Hauptnavigation"
         >
           {nav.map((item) => (
@@ -70,7 +70,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden xl:flex items-center gap-2">
           <Link
             to="/hotel/buchen"
             className={buttonVariants({
@@ -122,12 +122,6 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              to="/ueber-uns"
-              className="min-h-12 flex items-center font-display text-2xl tracking-tight"
-            >
-              Über uns
-            </Link>
             <Link
               to="/ikonografie"
               className="min-h-12 flex items-center font-display text-2xl tracking-tight"

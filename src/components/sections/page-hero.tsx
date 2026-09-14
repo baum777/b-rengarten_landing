@@ -72,7 +72,7 @@ export function PageHero({
 
 export function HomeHero() {
   return (
-    <section className="relative isolate min-h-[75svh] md:min-h-[min(90vh,980px)] flex items-end overflow-hidden bg-green-950 text-paper-50">
+    <section className="relative isolate h-dvh overflow-hidden bg-green-950 text-paper-50">
       <Photo
         src="/images/hero-garden.jpg"
         alt="Abendlicher Biergarten unter alten Kastanien, gedeckte Tische im warmen Licht"
@@ -80,26 +80,35 @@ export function HomeHero() {
         className="absolute inset-0 h-full w-full"
         imgClassName="object-[center_42%]"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-green-950/75 via-green-950/30 to-green-950/20" />
-      <div className="relative content-wide w-full pb-16 pt-32 md:pb-28">
+      <div className="absolute inset-0 bg-gradient-to-t from-green-950/70 via-green-950/35 to-green-950/25" />
+      <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center pt-16 pb-8">
         <p className="eyebrow text-paper-50/80">Bärengarten · Ravensburg</p>
-        <h1 className="text-display-xl mt-4 max-w-5xl">
-          Unvernünftig
-          <br />
-          gastfreundlich.
+        <h1 className="text-display-lg md:text-display-xl mt-5 max-w-4xl">
+          Unvernünftige Gastfreundschaft
         </h1>
-        <p className="mt-6 text-sm tracking-[0.18em] uppercase text-paper-50/75">
-          Hotel · Restaurant · Biergarten
-        </p>
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Link to="/hotel/buchen" className={buttonVariants({ variant: "wine" })}>
-            Zimmer
-          </Link>
+        <div className="mt-10 flex w-full max-w-sm flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
           <Link
             to="/restaurant/reservieren"
-            className={buttonVariants({ variant: "inverse" })}
+            className={buttonVariants({ variant: "wine", size: "lg" })}
           >
-            Tisch
+            Tisch reservieren
+          </Link>
+          <Link
+            to="/hotel/buchen"
+            className={buttonVariants({ variant: "inverse", size: "lg" })}
+          >
+            Zimmer buchen
+          </Link>
+          <Link
+            to="/restaurant/speisekarte"
+            className={buttonVariants({
+              variant: "secondary",
+              size: "lg",
+              className:
+                "border-paper-50/45 text-paper-50 hover:bg-paper-50/10",
+            })}
+          >
+            Speisekarte entdecken
           </Link>
         </div>
       </div>
