@@ -61,15 +61,23 @@ const vercelHosts = [env("VERCEL_PROJECT_PRODUCTION_URL"), env("VERCEL_URL")].fi
 );
 const vercelOrigins = vercelHosts.map((host) => `https://${host}`);
 
+// Preview traffic arrives on project-prefixed hosts that end in the team
+// suffix (per-deployment URLs and git-branch aliases). A single VERCEL_URL
+// covers only its own deployment, never the alias — allow the whole
+// team-scoped family instead. The literal team suffix keeps foreign
+// `baerengarten-landing-*` deployments from other Vercel teams untrusted.
+const vercelPreviewHosts = ["baerengarten-landing-*-forgedfromwood.vercel.app"];
+const vercelPreviewOrigins = vercelPreviewHosts.map((host) => `https://${host}`);
+
 const baseURL = explicitBaseURL ?? {
-  allowedHosts: [...vercelHosts, "localhost", "127.0.0.1", "[::1]"],
+  allowedHosts: [...vercelHosts, ...vercelPreviewHosts, "localhost", "127.0.0.1", "[::1]"],
   protocol: "auto" as const,
   fallback: "http://localhost:8080",
 };
 
 const trustedOrigins: string[] = explicitBaseURL
   ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
-  : [...vercelOrigins, ...LOCAL_DEV_ORIGINS];
+  : [...vercelOrigins, ...vercelPreviewOrigins, ...LOCAL_DEV_ORIGINS];
 
 const databaseUrl = env("DATABASE_URL");
 
