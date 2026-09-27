@@ -5,6 +5,7 @@ import { BookingBar } from "@/components/forms/inquiry-forms";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
 import { images } from "@/lib/site";
+import { publicContent } from "@/content/public";
 
 export const Route = createFileRoute("/hotel/")({
   component: HotelPage,
@@ -45,7 +46,7 @@ function HotelPage() {
         <div className="content-wide pb-20 md:pb-28 grid gap-10 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-5">
             <p className="eyebrow text-wine-700">Zimmer</p>
-            <h2 className="text-display-md mt-3">12 Zimmer. Eine Suite.</h2>
+            <h2 className="text-display-md mt-3">{publicContent.roomHeadline}</h2>
             <p className="mt-4 text-charcoal-600">
               Das Haus ist klein und überschaubar. Welches Zimmer zu Ihrem
               Aufenthalt passt, klären wir in der Anfrage — persönlich statt

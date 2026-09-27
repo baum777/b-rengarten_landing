@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHero } from "@/components/sections/page-hero";
 import { OccasionForm } from "@/components/forms/inquiry-forms";
 import { Photo } from "@/components/media/photo";
-import { images, occasions } from "@/lib/site";
+import { images } from "@/lib/site";
+import { occasions } from "@/content/public";
 
 export const Route = createFileRoute("/anlaesse")({
   component: EventsPage,

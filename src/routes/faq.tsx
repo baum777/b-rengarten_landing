@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { faqs } from "@/lib/site";
+import { faqs } from "@/content/public";
 
 export const Route = createFileRoute("/faq")({
   component: FaqPage,

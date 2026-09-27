@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
 import { images } from "@/lib/site";
+import { publicContent } from "@/content/public";
 
 export const Route = createFileRoute("/hotel/zimmer")({
   component: RoomsPage,
@@ -16,7 +17,7 @@ function RoomsPage() {
       <header className="content-wide pb-12 grid gap-10 lg:grid-cols-12 lg:items-end">
         <div className="lg:col-span-7">
           <p className="eyebrow text-wine-700">Hotel</p>
-          <h1 className="text-display-md mt-3">12 Zimmer. Eine Suite.</h1>
+          <h1 className="text-display-md mt-3">{publicContent.roomHeadline}</h1>
           <p className="mt-4 max-w-xl text-lg text-charcoal-600">
             Das Haus ist überschaubar — das macht den Aufenthalt ruhig. Welches
             Zimmer zu Ihnen passt, und was es kostet, klären wir in der Anfrage
