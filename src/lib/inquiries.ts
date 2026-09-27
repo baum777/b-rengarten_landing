@@ -1,44 +1,44 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-function requestId(prefix: string) {
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
-}
+const bookingSchema = z
+  .object({
+    arrival: z.iso.date(),
+    departure: z.iso.date(),
+    guests: z.coerce.number().int().min(1).max(8),
+    room: z.string().max(100).optional(),
+    name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen.").max(160),
+    email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse.").max(254),
+    phone: z.string().max(60).optional(),
+    notes: z.string().max(800).optional(),
+  })
+  .strict();
 
-const bookingSchema = z.object({
-  arrival: z.string().min(1, "Bitte prüfen Sie das Anreisedatum."),
-  departure: z.string().min(1, "Bitte prüfen Sie das Abreisedatum."),
-  guests: z.coerce.number().int().min(1).max(8),
-  room: z.string().optional(),
-  name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen."),
-  email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse."),
-  phone: z.string().optional(),
-  notes: z.string().max(800).optional(),
-});
+const reservationSchema = z
+  .object({
+    date: z.iso.date(),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    guests: z.coerce.number().int().min(1).max(20),
+    name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen.").max(160),
+    email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse.").max(254),
+    phone: z.string().max(60).optional(),
+    notes: z.string().max(800).optional(),
+  })
+  .strict();
 
-const reservationSchema = z.object({
-  date: z.string().min(1, "Bitte wählen Sie ein Datum."),
-  time: z.string().min(1, "Bitte wählen Sie eine Uhrzeit."),
-  guests: z.coerce.number().int().min(1).max(20),
-  name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen."),
-  email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse."),
-  phone: z.string().optional(),
-  notes: z.string().max(800).optional(),
-});
+const occasionSchema = z
+  .object({
+    occasion: z.string().min(1).max(160),
+    date: z.iso.date(),
+    guests: z.coerce.number().int().min(4).max(400),
+    name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen.").max(160),
+    email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse.").max(254),
+    phone: z.string().max(60).optional(),
+    notes: z.string().max(1200).optional(),
+  })
+  .strict();
 
-const occasionSchema = z.object({
-  occasion: z.string().min(1),
-  date: z.string().min(1, "Bitte nennen Sie uns ein Wunschdatum."),
-  guests: z.coerce.number().int().min(4).max(400),
-  name: z.string().min(2, "Bitte nennen Sie uns Ihren Namen."),
-  email: z.string().email("Bitte prüfen Sie die E-Mail-Adresse."),
-  phone: z.string().optional(),
-  notes: z.string().max(1200).optional(),
-});
-
-export type InquiryResult =
-  | { ok: true; id: string }
-  | { ok: false; message: string };
+export type InquiryResult = { ok: true; id: string } | { ok: false; message: string };
 
 export const submitBookingInquiry = createServerFn({ method: "POST" })
   .validator((data: unknown) => bookingSchema.parse(data))
@@ -49,17 +49,22 @@ export const submitBookingInquiry = createServerFn({ method: "POST" })
         message: "Das Abreisedatum muss nach der Anreise liegen.",
       };
     }
-    return { ok: true, id: requestId("BG-Z") };
+    const { saveInquiry } = await import("./operations/inquiry.server");
+    return { ok: true, id: await saveInquiry({ ...data, type: "ROOM" }) };
   });
 
 export const submitReservation = createServerFn({ method: "POST" })
   .validator((data: unknown) => reservationSchema.parse(data))
-  .handler(async (): Promise<InquiryResult> => {
-    return { ok: true, id: requestId("BG-T") };
+  .handler(async ({ data }): Promise<InquiryResult> => {
+    const { saveInquiry } = await import("./operations/inquiry.server");
+    const { date, ...rest } = data;
+    return { ok: true, id: await saveInquiry({ ...rest, arrival: date, type: "TABLE" }) };
   });
 
 export const submitOccasionInquiry = createServerFn({ method: "POST" })
   .validator((data: unknown) => occasionSchema.parse(data))
-  .handler(async (): Promise<InquiryResult> => {
-    return { ok: true, id: requestId("BG-A") };
+  .handler(async ({ data }): Promise<InquiryResult> => {
+    const { saveInquiry } = await import("./operations/inquiry.server");
+    const { date, ...rest } = data;
+    return { ok: true, id: await saveInquiry({ ...rest, arrival: date, type: "OCCASION" }) };
   });
