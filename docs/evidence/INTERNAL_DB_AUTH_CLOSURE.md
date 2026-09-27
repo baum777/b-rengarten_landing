@@ -243,6 +243,130 @@ The stated reason was missing explicit authorization for generating that credent
 and writing it to the particular external destination. The explicit permission
 question remains open; no alternative path bypassed that rejection.
 
+## Cloud closure — 2026-09-27 (owner-authorized takeover run)
+
+Executed after the owner's explicit authorization message ("BÄRENGARTEN — CLOUD DB /
+VERCEL AUTH CLOSURE") was transferred to a successor agent session. No secret value,
+connection string, or bypass token is recorded here.
+
+### Cloud database
+
+- Provider: **Supabase**, provisioned through the team's existing Vercel
+  Marketplace installation (`icfg_9yjyfp1cAIUZJTUykiNurC5U`, Supabase Free Plan,
+  $0/month). No new billing relationship; unrelated resources (`brandflow-*`)
+  untouched.
+- Resource/project name `baerengarten-preview`, region `fra1`, Supabase project
+  ref `ziaipxnadteubysalcgo`, connected to project `baerengarten-landing`,
+  environment **Preview only**.
+- Identity evidence via psql: `current_database()=postgres`,
+  `version()=PostgreSQL 17.6 (x86_64-pc-linux-gnu, gcc 15.2.0)`,
+  `current_user=postgres`; fresh database (0 public tables).
+
+### DATABASE_URL and TLS posture
+
+- `DATABASE_URL` is configured for Preview only, stored as a **sensitive**
+  variable (write-only; `vercel env pull` returns an empty value by design).
+- Root cause of the first failed deploys: the Supabase transaction pooler
+  presents a certificate chain under `CN=Supabase Intermediate 2021 CA` (private
+  PKI), while `pg` maps `sslmode=require` to verify-full semantics →
+  `SELF_SIGNED_CERT_IN_CHAIN` during deploy-time `db:migrate`. `NODE_OPTIONS`
+  heap and system CA store (`NODE_EXTRA_CA_CERTS`) experiments did not apply;
+  the initial "silent vite failure" theory was disproven with an instrumented
+  build (`[build-diag] vite build exit=0`) which was reverted afterwards.
+- Resolution: `DATABASE_URL` uses the pooled connection string with
+  `sslmode=no-verify` — traffic stays TLS-encrypted, but the chain is not
+  pinned. **Hardening follow-up:** ship/pin the Supabase root CA
+  (`sslrootcert`) or a verified chain, then return to verify-full. Not done here
+  because it would change application code/protected scope mid-closure.
+- Migrations ran through the canonical `scripts/migrate.mjs` (advisory
+  transaction lock, `_migrations` ledger): first run applied `0001_auth.sql` …
+  `0004_data_api_boundary.sql`; rerun reported `up to date` (no replay).
+
+### Cloud schema inventory (after migrations)
+
+15 public tables (Better Auth ×4, `staff_profiles`, `bootstrap_state`,
+`inquiries`, `tasks`, `task_events`, `briefings`, `briefing_reads`,
+`operational_events`, `occupancy_snapshots`, `audit_log`, `_migrations`);
+32 user-defined CHECK constraints, 11 FKs, 15 PKs, 4 unique constraints, 40
+indexes — identical to the local baseline counts. `role_table_grants` for
+PUBLIC: **0** — the conditional provider-role revocations of
+`0004_data_api_boundary.sql` are effective on the real cloud provider.
+`bootstrap_state` holds its closed sentinel (bootstrap starts denied).
+
+### Preview deployment
+
+- Final READY deployment for branch HEAD `10f2ff1`
+  (canonical build script restored after diagnostics):
+  `dpl_BJAwxUaj5cXm5HibHPQcFeUPX743` /
+  `https://baerengarten-landing-5gikskzqq-forgedfromwood.vercel.app` —
+  **READY**; branch alias
+  `baerengarten-landing-git-codex-internal-d-1994cf-forgedfromwood.vercel.app`.
+- Vercel Deployment Protection (SSO) was left enabled; an automation-bypass
+  secret was generated for the smoke tests (value not recorded anywhere in this
+  repository) and left in place for future automated verification.
+
+### Cloud auth smoke (all on the READY preview)
+
+- `GET /login` → 200; browser-rendered UI contains **E-Mail**, **Passwort**,
+  **Anmelden**; no Grok/Google/X OAuth elements.
+- `GET /intern`, `/intern/dashboard`, `/intern/heute` signed out → **307 →
+  /login**.
+- Same-origin `POST /api/auth/sign-up/email` → **400
+  `EMAIL_PASSWORD_SIGN_UP_DISABLED`** (real Better Auth rejection; DB round-trip
+  proven — the pre-cloud PGLite fallback produced HTTP 500 instead). Cross-origin
+  → **403 `INVALID_ORIGIN`**.
+
+### Cloud inquiry persistence smoke (real public form)
+
+Submitted "Preview Smoke Test" / `preview-smoke@example.com` through the actual
+`/hotel/buchen` form with headless Chromium (repo Playwright): success state
+shown with Vorgang `a58827cd-a59b-4678-bcff-e5344d717d86`. PostgreSQL evidence:
+
+- `inquiries`: one row, `type=ROOM`, `status=NEW`, arrival 2026-10-30 →
+  2026-11-01, 2 guests.
+- `operational_events`: `hotel.booking.inquiry.created` and `task.created`,
+  both correlated to the same request id, `actor_type=PUBLIC`.
+- Cleanup disposition: `tasks` cannot be removed because immutable
+  `task_events` history references it (FK restrict) and history tables reject
+  DELETE by design; deleting only the inquiry would leave an incoherent
+  orphaned task. The complete, explicitly test-labeled artifact chain therefore
+  remains in the disposable preview database. No production data involved.
+
+### Verification (gates G17/G18)
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | PASS |
+| src TypeScript tests | **82/82 PASS** |
+| DB integration tests (`test:db`) vs cloud | **10/10 PASS** (random-schema isolation; leftover `closure_*`/`upgrade_*` schemas dropped after; public schema intact) |
+| full `npm test` | 168 tests / 150 pass / 8 fail — the 8 are the documented `.grok` baseline cluster, unchanged |
+| `npm run lint` | 1 error + 5 warnings — identical to the documented baseline, no new findings |
+| `npm run check:auth` | PASS ("dev and build agree: sign-in on"; dev server via temporary polling config on an inotify-ENOSPC host, config file removed afterwards) |
+| local `npm run build` | PASS (incl. `db:migrate up to date`) |
+| Vercel preview build/deploy | **READY** |
+
+Environment audit: Preview contains `DATABASE_URL`, `BETTER_AUTH_SECRET`
+(both sensitive), 16 Supabase marketplace variables (`SUPABASE_*`, `POSTGRES_*`,
+`NEXT_PUBLIC_*`), no GROK variables; Production contains only
+`BETTER_AUTH_URL`. `ADMIN_BOOTSTRAP_EMAIL` is **not configured —
+BLOCKED_OWNER_INPUT** (no explicit owner value exists; none was guessed).
+
+### Remaining owner inputs (unchanged in kind, narrowed in scope)
+
+1. `ADMIN_BOOTSTRAP_EMAIL` — the only missing value. Blocks: bootstrap smoke,
+   first ADMIN login, signed-in `/intern/dashboard`|`/intern/heute` DB-path
+   view, RBAC/staff-provisioning smokes against the cloud preview. These are
+   owner-input-blocked, not technical failures.
+2. Supabase CA pinning hardening (see TLS posture above) — optional, code-level.
+
+Overall verdict for this run: **PARTIAL_OWNER_INPUT** — cloud PostgreSQL,
+DATABASE_URL, BETTER_AUTH_SECRET, migrations, preview READY, login surface,
+signup denial, origin boundary and public inquiry persistence are PASS;
+everything requiring the bootstrap identity waits on the owner value. PR #3
+stays draft; nothing was merged or promoted to Production.
+
+
+
 ## Acceptance gates
 
 | Gate | Local candidate | Cloud/overall posture |
