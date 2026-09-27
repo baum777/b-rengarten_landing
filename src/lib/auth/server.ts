@@ -12,7 +12,7 @@ import { betterAuth } from "better-auth";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
-import { ensureDbReady, getPglite } from "../db";
+import { ensureDbReady, getPglite, getSql } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { pgliteDialect } from "./pglite-dialect";
@@ -29,8 +29,9 @@ const globalAuthRef = globalThis as typeof globalThis & {
   __baerengartenAuthDevSecret__?: string;
 };
 function localAuthSecret(): string {
-  globalAuthRef.__baerengartenAuthDevSecret__ ??=
-    randomBytes(32).toString("hex");
+  if (process.env.DATABASE_URL?.trim() || process.env.VERCEL)
+    throw new Error("BETTER_AUTH_SECRET_REQUIRED");
+  globalAuthRef.__baerengartenAuthDevSecret__ ??= randomBytes(32).toString("hex");
   return globalAuthRef.__baerengartenAuthDevSecret__;
 }
 
@@ -44,8 +45,7 @@ const env = (key: string): string | undefined => {
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 
 /** True when the employee authentication path is active. */
-export const authConfigured =
-  !authDisabled && emailAndPasswordEnabled;
+export const authConfigured = !authDisabled && emailAndPasswordEnabled;
 
 const explicitBaseURL = env("BETTER_AUTH_URL");
 
@@ -56,19 +56,13 @@ const LOCAL_DEV_ORIGINS: string[] = [
 ];
 
 // Vercel exposes these host names without protocol.
-const vercelHosts = [
-  env("VERCEL_PROJECT_PRODUCTION_URL"),
-  env("VERCEL_URL"),
-].filter((host): host is string => Boolean(host));
+const vercelHosts = [env("VERCEL_PROJECT_PRODUCTION_URL"), env("VERCEL_URL")].filter(
+  (host): host is string => Boolean(host),
+);
 const vercelOrigins = vercelHosts.map((host) => `https://${host}`);
 
 const baseURL = explicitBaseURL ?? {
-  allowedHosts: [
-    ...vercelHosts,
-    "localhost",
-    "127.0.0.1",
-    "[::1]",
-  ],
+  allowedHosts: [...vercelHosts, "localhost", "127.0.0.1", "[::1]"],
   protocol: "auto" as const,
   fallback: "http://localhost:8080",
 };
@@ -84,11 +78,28 @@ const database = databaseUrl
   ? new Pool({ connectionString: databaseUrl })
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
+const configuredSecret = env("BETTER_AUTH_SECRET");
+if (configuredSecret && configuredSecret.length < 32)
+  throw new Error("BETTER_AUTH_SECRET_TOO_SHORT");
+
 export const auth = betterAuth({
   baseURL,
-  secret: env("BETTER_AUTH_SECRET") ?? localAuthSecret(),
+  secret: configuredSecret ?? localAuthSecret(),
   database,
   trustedOrigins,
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (session) => {
+          const { event } = await import("../../../scripts/operations.mjs");
+          const sql = await getSql();
+          await sql.transaction((tx) =>
+            event(tx, "auth.login", "session", session.id, session.userId),
+          );
+        },
+      },
+    },
+  },
 
   account: {
     accountLinking: {
@@ -101,9 +112,7 @@ export const auth = betterAuth({
 
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
-  ...(emailAndPasswordEnabled
-    ? { emailAndPassword: { enabled: true, disableSignUp: true } }
-    : {}),
+  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true, disableSignUp: true } } : {}),
 
   // Host-only secure cookies prevent sibling-domain cookie tossing.
   advanced: {
