@@ -103,10 +103,18 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
+// Vercel injects these system vars on its own deployments (host names without
+// protocol). Without them a deployed origin was NOT trusted and every
+// credentialed auth POST from the real site failed with "Invalid origin"
+// (R1.1-B finding, 2026-09-27). Production aliases are always https.
+const vercelHosts = [env("VERCEL_PROJECT_PRODUCTION_URL"), env("VERCEL_URL")].filter(
+  (host): host is string => Boolean(host),
+);
+const vercelOrigins = vercelHosts.map((host) => `https://${host}`);
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  allowedHosts: [...previewAllowedHosts, ...vercelHosts, "localhost", "127.0.0.1", "[::1]"],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
@@ -122,6 +130,7 @@ const trustedOrigins: string[] = explicitBaseURL
       ...previewAllowedHosts,
       // Full-origin wildcards (matched against Origin)
       ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+      ...vercelOrigins,
       ...LOCAL_DEV_ORIGINS,
     ];
 

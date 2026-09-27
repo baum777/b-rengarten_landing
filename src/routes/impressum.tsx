@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { site } from "@/lib/site";
+import { LEGAL_CONTACT, legalContactEmail } from "@/lib/legal-contact";
 
 export const Route = createFileRoute("/impressum")({
   component: ImprintPage,
@@ -22,6 +23,9 @@ function ImprintPage() {
           <br />
           {site.address.zip} {site.address.city}
         </p>
+        {legalContactEmail(LEGAL_CONTACT) ? (
+          <p>E-Mail: {legalContactEmail(LEGAL_CONTACT)}</p>
+        ) : null}
         <p className="text-sm text-charcoal-600">
           Kontaktwege (Telefon, E-Mail), Rechtsform, Vertretung und
           Registereintrag werden mit der Betriebsführung bestätigt und hier
