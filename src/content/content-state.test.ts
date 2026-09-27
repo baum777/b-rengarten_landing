@@ -76,3 +76,35 @@ describe("content state: R1 claim regression fixtures", () => {
     assert.match(publicContent.menuNotice, /Karte entsteht/);
   });
 });
+
+describe("content state: R3 homepage projection", () => {
+  it("derives the fact strip from LIVE room/suite facts without capacity claims", () => {
+    assert.deepEqual(
+      publicContent.factStrip.map((fact) => fact.value),
+      ["12", "1", "2009", "2018"],
+    );
+    for (const banned of ["14.000", "Plätze", "Sitze", "200 Sitz"]) {
+      assert.ok(!serialized.includes(banned), `${banned} leaked`);
+    }
+  });
+
+  it("renders the timeline from documented facts only", () => {
+    assert.equal(publicContent.timeline.length, 4);
+    assert.equal(publicContent.timeline[1].text, propertyFacts.conversion2009.value);
+    assert.equal(publicContent.timeline[2].text, propertyFacts.extension2018.value);
+    assert.match(publicContent.timeline[3].text, /neues Kapitel/);
+    assert.equal(publicContent.rutenfestStory, propertyFacts.eventHistory.value);
+    for (const banned of ["Öffnungszeiten", "Programm", "täglich"]) {
+      assert.ok(!serialized.includes(banned), `${banned} leaked`);
+    }
+  });
+
+  it("keeps garden and architecture copy grounded in the LIVE facts", () => {
+    assert.ok(
+      publicContent.gardenStory.startsWith(propertyFacts.gardenChestnut.value),
+    );
+    assert.ok(
+      publicContent.architectureStory.startsWith(propertyFacts.architecture.value),
+    );
+  });
+});

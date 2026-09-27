@@ -13,7 +13,6 @@ import { SiteFooter } from "@/components/site/footer";
 import { MobileActionBar } from "@/components/site/mobile-bar";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Bärengarten Ravensburg";
@@ -84,20 +83,11 @@ export const Route = createRootRoute({
 
 function RootDocument() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isHome = pathname === "/";
   // The internal area carries its own shell (InternalShell, /intern layout
   // route) — public header/footer/mobile bar never mount under /intern/*.
+  // Since R3 the homepage is a normal scrolling document: no overflow locks,
+  // footer and mobile action bar render on every public page.
   const isInternal = pathname.startsWith("/intern");
-
-  useEffect(() => {
-    const html = document.documentElement;
-    html.classList.toggle("overflow-hidden", isHome);
-    document.body.classList.toggle("overflow-hidden", isHome);
-    return () => {
-      html.classList.remove("overflow-hidden");
-      document.body.classList.remove("overflow-hidden");
-    };
-  }, [isHome]);
 
   return (
     <html lang="de" suppressHydrationWarning className="antialiased">
@@ -107,7 +97,7 @@ function RootDocument() {
       <body
         className={cn(
           "bg-paper-50 text-charcoal-900",
-          isHome ? "h-dvh overflow-hidden" : isInternal ? "" : "pb-14 md:pb-0",
+          isInternal ? "" : "pb-14 md:pb-0",
         )}
       >
         <PreviewHostBridge />
@@ -122,8 +112,8 @@ function RootDocument() {
           <div id="inhalt">
             <Outlet />
           </div>
-          {isHome || isInternal ? null : <SiteFooter />}
-          {isHome || isInternal ? null : <MobileActionBar />}
+          {isInternal ? null : <SiteFooter />}
+          {isInternal ? null : <MobileActionBar />}
         </AuthProvider>
         <script
           type="application/ld+json"

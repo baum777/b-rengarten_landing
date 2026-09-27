@@ -16,6 +16,11 @@ const address = liveFactOrThrow(propertyFacts.address);
 const geo = liveFactOrThrow(propertyFacts.geo);
 const rooms = liveFactOrThrow(propertyFacts.roomCount);
 const suites = liveFactOrThrow(propertyFacts.suiteCount);
+const conversion2009 = liveFactOrThrow(propertyFacts.conversion2009);
+const extension2018 = liveFactOrThrow(propertyFacts.extension2018);
+const gardenChestnut = liveFactOrThrow(propertyFacts.gardenChestnut);
+const architecture = liveFactOrThrow(propertyFacts.architecture);
+const eventHistory = liveFactOrThrow(propertyFacts.eventHistory);
 
 export const occasions = [
   {
@@ -75,6 +80,28 @@ export const publicContent = {
   // Transitional-Botschaft für /restaurant/speisekarte — kuriert, kein
   // erfundenes Menü. Die zugehörigen Fakten bleiben OPERATOR_STATE/HIDDEN.
   menuNotice: "Unsere neue Karte entsteht derzeit. Aktuelle Informationen folgen.",
+  // R3-Homepage: Faktstreifen und Zeitleiste — ausschließlich LIVE-Property-
+  // Truth (Zimmer/Suite-Zahlen, belegte Bau-Epochen). Keine Kapazitäten, keine
+  // Betriebsdaten. Kuratierte Erzählstimme ist wie occasions/faqs Teil der
+  // Projektion und startet jeweils textlich beim belegten Fakt.
+  factStrip: [
+    { value: String(rooms), label: "Zimmer" },
+    { value: String(suites), label: "Suite" },
+    { value: "2009", label: "Umbau zum Stadthotel" },
+    { value: "2018", label: "Erweiterung" },
+  ],
+  timeline: [
+    {
+      era: "Vor 2009",
+      text: "Ein Haus mit Gastronomie-Tradition, seit Langem mit Veranstaltungen und dem Rutenfest verbunden.",
+    },
+    { era: "2009", text: conversion2009 },
+    { era: "2018", text: extension2018 },
+    { era: "Heute", text: "Ein bekanntes Haus. Ein neues Kapitel." },
+  ],
+  gardenStory: `${gardenChestnut} Im Sommer lebt das Haus nach draußen: gedeckte Tische unter den alten Kronen, und die Stadt ist nah.`,
+  architectureStory: `${architecture} Eiche, Messing und große Öffnungen in den Garten prägen die Räume — die Materialsprache, in der auch diese Seite gehalten ist.`,
+  rutenfestStory: eventHistory,
   occasions,
   faqs,
   reviews,
