@@ -1,13 +1,13 @@
 # Bärengarten Internal DB/Auth Closure
 
-Date: 2026-09-27  
-Task: BG-DB-AUTH-CLOSURE-20260927  
-Verdict: **PARTIAL**  
-Repository: https://github.com/baum777/b-rengarten_landing  
-Branch: `codex/internal-db-auth-closure`  
-Start SHA: `b2f02a53f3b9ac229f8130dd2ad0ed447d44e5ca`  
-Implementation commit: `91b2ced20fa057a82c9c1c43c8fe72e547bfeb72`  
-Implementation tree: `916cc9599ea1274288fb612fed0753e75830a587`  
+Date: 2026-09-27
+Task: BG-DB-AUTH-CLOSURE-20260927
+Verdict: **PARTIAL**
+Repository: https://github.com/baum777/b-rengarten_landing
+Branch: `codex/internal-db-auth-closure`
+Start SHA: `b2f02a53f3b9ac229f8130dd2ad0ed447d44e5ca`
+Implementation commit: `91b2ced20fa057a82c9c1c43c8fe72e547bfeb72`
+Implementation tree: `916cc9599ea1274288fb612fed0753e75830a587`
 PR: [#3, DRAFT](https://github.com/baum777/b-rengarten_landing/pull/3)
 
 This report records a verified local PostgreSQL implementation candidate. It does
@@ -39,6 +39,7 @@ and tests. Review here was a source/diff self-check plus reproducible tests;
 ## Database
 
 - Provider verified: local native PostgreSQL, **18.6**, dedicated test cluster.
+- Cluster state: stopped cleanly after verification; no local test server remains active.
 - Database: `baerengarten_test`; connection smoke and application queries passed.
 - Socket directory: `/home/baum/workspace/baum-os/runtime/baerengarten-closure`.
 - Port: 55439; no TCP listener, host authentication rejected.
