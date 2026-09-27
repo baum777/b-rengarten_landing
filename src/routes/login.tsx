@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authClient, GROK_PROVIDERS, signIn } from "@/lib/auth/client";
+import { authClient } from "@/lib/auth/client";
 import { loadStaffAccess } from "@/lib/permissions/access";
 
 export const Route = createFileRoute("/login")({
@@ -42,12 +42,12 @@ function LoginPage() {
     if (signInError) {
       setBusy(false);
       setError(
-        "Anmeldung fehlgeschlagen. Prüfen Sie E-Mail und Passwort — oder melden Sie sich über einen Anmelde-Dienst an.",
+        "Anmeldung fehlgeschlagen. Prüfen Sie E-Mail und Passwort.",
       );
       return;
     }
     // Full reload so the fresh session cookie reaches the SSR guards, which
-    // resolve the role landing (incl. the one-time first-admin bootstrap).
+    // resolve the role landing.
     window.location.assign("/intern");
   }
 
@@ -57,8 +57,8 @@ function LoginPage() {
         <p className="eyebrow text-wine-700">Bärengarten Betrieb</p>
         <h1 className="text-display-md mt-3">Mitarbeiter-Anmeldung</h1>
         <p className="mt-3 text-sm text-charcoal-600">
-          Zugang nur mit freigeschaltetem Mitarbeiterkonto. Anfragen als Gast
-          bitte über die öffentlichen Formulare.
+          Zugang nur mit vorab freigeschaltetem Mitarbeiterkonto. Anfragen als
+          Gast bitte über die öffentlichen Formulare.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
@@ -89,23 +89,6 @@ function LoginPage() {
             {busy ? "Anmeldung läuft…" : "Anmelden"}
           </Button>
         </form>
-
-        <div className="mt-8 flex flex-col gap-2">
-          {GROK_PROVIDERS.map((provider) => (
-            <Button
-              key={provider.providerId}
-              variant="secondary"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                void signIn(provider.providerId, { callbackURL: "/intern" });
-              }}
-            >
-              Weiter mit {provider.label}
-            </Button>
-          ))}
-        </div>
       </div>
     </main>
   );
