@@ -367,6 +367,35 @@ stays draft; nothing was merged or promoted to Production.
 
 
 
+### Development bootstrap (owner-approved, 2026-09-27, same session)
+
+The owner commissioned a development login for the cloud preview and confirmed
+the bootstrap identity `dev@baerengarten.local` for this purpose. Executed via
+the offline CLI (`staff:bootstrap`, password on protected stdin, not stored in
+this document):
+
+- `user` + `staff_profiles` rows created (role `ADMIN`, department `MANAGEMENT`,
+  userId `kc95IJjjN368qgCHsJWdE9xrysrpVTCa`); `bootstrap_state.closed_at` set —
+  the one-time bootstrap is now **permanently closed** for the preview
+  database; `audit_log` records `bootstrap.admin.created`.
+- Sign-in on the READY preview: correct credentials → **200** with session;
+  wrong password → **401 `INVALID_EMAIL_OR_PASSWORD`**.
+- Signed-in internal views render real cloud data:
+  `/intern/dashboard` (and `/intern/heute`) → 200; dashboard shows
+  "Offene Anfragen 1 / Offene Aufgaben 1 / Aktive Mitarbeiter 1" and the
+  correlated smoke inquiry (`ROOM · NEW a58827cd…`); unknown occupancy fields
+  render as "Keine Daten" (no invented values). This closes the signed-in
+  dashboard/DB-path evidence (§13 of the mandate).
+- Negative bootstrap gates: repeat bootstrap and wrong bootstrap email both
+  denied with transaction rollback; exactly 1 ADMIN / 1 user remains.
+- `ADMIN_BOOTSTRAP_EMAIL` status changes to **configured** (development value,
+  owner-confirmed in-session). The staff-provisioning cloud E2E (mandate §11)
+  was intentionally not executed in this slice; it is unblocked (actorId
+  available) and locally verified.
+
+Password handling: the development password is handed to the owner out-of-band
+and kept in the local runtime path only; it is not recorded in this repository.
+
 ## Acceptance gates
 
 | Gate | Local candidate | Cloud/overall posture |
