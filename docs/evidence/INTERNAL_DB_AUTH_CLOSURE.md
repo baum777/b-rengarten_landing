@@ -396,6 +396,37 @@ this document):
 Password handling: the development password is handed to the owner out-of-band
 and kept in the local runtime path only; it is not recorded in this repository.
 
+### Production merge & deploy (owner-ordered, 2026-09-27, same session)
+
+The owner explicitly ordered "merge und vercel deploy" after the development
+bootstrap. Sequence and evidence:
+
+- Context: earlier that day the owner had merged PR #2 (grok-surface removal) as
+  `b2f02a5`, so remote main already contained the R3 homepage; the closure
+  branch was based on it (no textual conflicts; GitHub MERGEABLE/CLEAN).
+- Production environment provisioned BEFORE merging (deploy-time migration is
+  fail-closed without it): Supabase resource `baerengarten-production`
+  (fra1, Free plan, ref `shytnhdinqsgmwnmcums`) via the same marketplace
+  installation, connected to **Production only**; `DATABASE_URL` (pooled,
+  `sslmode=no-verify`, sensitive) and a fresh dedicated `BETTER_AUTH_SECRET`
+  (sensitive) set. The preview database and its secret were NOT promoted.
+- The locally committed R4 contract doc (`df7afd1`, docs-only) was rebased onto
+  `b2f02a5` and pushed first.
+- PR #3 marked ready and merged as a **merge commit** `96b2640`
+  (evidence-bound branch SHAs preserved). Local main fast-forwarded.
+- Production deployment: **READY** (`https://baerengarten-landing-kjxpfwwms-…`,
+  target production, commit `96b2640`). Deploy-time `db:migrate` applied the
+  4 migrations to the fresh production database.
+- Production smoke: `/` 200 with the full R3 narrative (hero/title, „Unter
+  alten Kastanien", Timeline, Location, final CTA present in the streamed
+  payload); `/login` 200; `/intern` 307 → `/login`; same-origin signup →
+  400 `EMAIL_PASSWORD_SIGN_UP_DISABLED`; `/hotel/buchen`, `/impressum` 200.
+- Production database state: 15 tables, `_migrations` 4/4, **0 PUBLIC grants**,
+  0 admins, 0 inquiries, no synthetic data. `bootstrap_state.closed_at` is
+  **NULL — the production bootstrap is intentionally OPEN**; executing it is a
+  reserved owner decision (real identity/email), separate from the
+  preview-only development admin.
+
 ## Acceptance gates
 
 | Gate | Local candidate | Cloud/overall posture |
