@@ -12,7 +12,7 @@ export const Route = createFileRoute("/anlaesse")({
       {
         name: "description",
         content:
-          "Feiern, Familien, kleine Firmenrunden. Innen bis 200, Garten bis 400 Plätze. Anfrage an das Haus.",
+          "Feiern, Familien, kleine Firmenrunden. Das Haus hat Raum innen wie draußen unter alten Kastanien. Anfrage an das Haus.",
       },
     ],
   }),

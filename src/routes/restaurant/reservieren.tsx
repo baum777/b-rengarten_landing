@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ReservationForm } from "@/components/forms/inquiry-forms";
-import { hours, site } from "@/lib/site";
 
 export const Route = createFileRoute("/restaurant/reservieren")({
   component: ReservePage,
@@ -17,14 +16,8 @@ function ReservePage() {
           <p className="eyebrow text-wine-700">Restaurant</p>
           <h1 className="text-display-md mt-3">Tisch reservieren</h1>
           <p className="mt-4 text-lg text-charcoal-600">
-            {hours.restaurant}. {hours.restaurantNote} Größere Runden bitte als
-            Anlass anfragen.
-          </p>
-          <p className="mt-6 text-sm text-charcoal-600">
-            Telefon{" "}
-            <a href={site.phoneHref} className="underline underline-offset-4">
-              {site.phone}
-            </a>
+            Sie schreiben uns, wir prüfen und bestätigen persönlich. Größere
+            Runden bitte als Anlass anfragen.
           </p>
         </div>
         <div className="lg:col-span-7 rounded-md border border-charcoal-900/12 bg-white p-6 md:p-8">

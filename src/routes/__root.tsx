@@ -25,8 +25,6 @@ const jsonLd = {
       "@type": "Hotel",
       name: "Bärengarten Ravensburg",
       url: "https://baerengarten.de",
-      telephone: "+49 751 95877753",
-      email: site.email,
       address: {
         "@type": "PostalAddress",
         streetAddress: site.address.street,
@@ -63,7 +61,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Bärengarten Ravensburg — Hotel mit Restaurant und Biergarten in Ravensburg. Qualität, Ehrlichkeit und persönliche Gastfreundschaft.",
+          "Bärengarten Ravensburg — ein Haus in der Schützenstraße mit Hotel, Restaurant und Biergarten unter alten Kastanien.",
       },
       { name: "theme-color", content: "#1F3B2E" },
     ],

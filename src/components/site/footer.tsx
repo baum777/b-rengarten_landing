@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Monogram } from "@/components/brand/logo";
-import { hours, site } from "@/lib/site";
+import { site } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -16,7 +16,7 @@ export function SiteFooter() {
           </div>
           <p className="mt-6 max-w-sm text-paper-50/80 leading-relaxed">
             Hotel, Restaurant und Biergarten in der Stadt. Ein Ort zum Ankommen,
-            Essen und Zusammensitzen — persönlich geführt.
+            Essen und Zusammensitzen.
           </p>
           <p className="mt-6 text-sm text-paper-50/70">
             {site.address.street}
@@ -57,25 +57,20 @@ export function SiteFooter() {
         </div>
 
         <div className="md:col-span-4">
-          <p className="eyebrow text-paper-50/60 mb-4">Direkt</p>
+          <p className="eyebrow text-paper-50/60 mb-4">Anfragen</p>
           <ul className="space-y-2 text-sm">
-            <li>
-              <a href={site.phoneHref} className="hover:underline underline-offset-4">
-                {site.phone}
-              </a>
+            <li className="text-paper-50/80">
+              Zimmer-, Tisch- und Anlassanfragen über die Formulare dieser
+              Seite — wir bestätigen persönlich.
             </li>
             <li>
               <a
-                href={`mailto:${site.email}`}
+                href={site.googleMapsUrl}
                 className="hover:underline underline-offset-4"
               >
-                {site.email}
+                Route in Google Maps
               </a>
             </li>
-            <li className="pt-3 text-paper-50/70">
-              Restaurant {hours.restaurant}
-            </li>
-            <li className="text-paper-50/70">Rezeption {hours.receptionWeek}</li>
           </ul>
         </div>
       </div>

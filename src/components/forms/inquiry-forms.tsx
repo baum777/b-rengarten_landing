@@ -5,7 +5,6 @@ import {
   submitOccasionInquiry,
   submitReservation,
 } from "@/lib/inquiries";
-import { site } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,16 +42,7 @@ function Success({ id, kind }: { id: string; kind: string }) {
       </h2>
       <p className="mt-3 text-charcoal-600">
         Vorgang <span className="micro text-charcoal-900">{id}</span>. Wir
-        melden uns persönlich. Wenn es eilt:
-      </p>
-      <p className="mt-4">
-        <a href={site.phoneHref} className="underline underline-offset-4">
-          {site.phone}
-        </a>
-        {" · "}
-        <a href={`mailto:${site.email}`} className="underline underline-offset-4">
-          {site.email}
-        </a>
+        melden uns persönlich mit der Bestätigung.
       </p>
     </div>
   );
@@ -61,7 +51,7 @@ function Success({ id, kind }: { id: string; kind: string }) {
 function ErrorNote({ message }: { message: string }) {
   return (
     <p role="alert" className="text-sm text-error">
-      {message} Falls das Formular nicht geht, rufen Sie uns an: {site.phone}.
+      {message}
     </p>
   );
 }
@@ -139,18 +129,13 @@ export function BookingForm({
             defaultValue={defaults?.guests ?? "1"}
           />
         </Field>
-        <Field id="room" label="Zimmertyp">
-          <select
+        <Field id="room" label="Zimmerwunsch (optional)">
+          <Input
             id="room"
             name="room"
-            className="flex h-control w-full rounded-sm border border-charcoal-900/16 bg-paper-50 px-3 font-sans text-base"
-            defaultValue="komfort"
-          >
-            <option value="komfort">Komfort</option>
-            <option value="business">Business</option>
-            <option value="suite">Junior Suite</option>
-            <option value="egal">Ohne Präferenz</option>
-          </select>
+            type="text"
+            placeholder="z. B. ruhig, hoch, ohne Präferenz"
+          />
         </Field>
       </div>
       <Field id="name" label="Name">
@@ -250,7 +235,7 @@ export function ReservationForm() {
         {state.status === "submitting" ? "Wird gesendet…" : "Tisch reservieren"}
       </Button>
       <p className="text-sm text-charcoal-600">
-        Bestätigung erfolgt durch das Haus, nicht automatisch. Telefon: {site.phone}.
+        Bestätigung erfolgt durch das Haus, nicht automatisch.
       </p>
     </form>
   );

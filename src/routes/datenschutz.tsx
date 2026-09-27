@@ -16,7 +16,7 @@ function PrivacyPage() {
         <h1 className="text-display-md">Datenschutz</h1>
         <p>
           Verantwortlich: {site.name}, {site.address.street}, {site.address.zip}{" "}
-          {site.address.city}, {site.email}.
+          {site.address.city}.
         </p>
         <h2 className="font-display text-2xl pt-4">Anfragen</h2>
         <p className="text-charcoal-600">
@@ -34,7 +34,8 @@ function PrivacyPage() {
         <h2 className="font-display text-2xl pt-4">Ihre Rechte</h2>
         <p className="text-charcoal-600">
           Sie haben das Recht auf Auskunft, Berichtigung, Löschung und
-          Beschwerde bei einer Aufsichtsbehörde. Schreiben Sie an {site.email}.
+          Beschwerde bei einer Aufsichtsbehörde. Richten Sie entsprechende
+          Anliegen schriftlich an die oben genannte verantwortliche Stelle.
         </p>
       </article>
     </main>

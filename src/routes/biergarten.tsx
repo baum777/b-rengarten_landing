@@ -3,7 +3,7 @@ import { PageHero } from "@/components/sections/page-hero";
 import { EditorialSplit, StatusLine } from "@/components/sections/editorial";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
-import { hours, images, site } from "@/lib/site";
+import { images, site } from "@/lib/site";
 
 export const Route = createFileRoute("/biergarten")({
   component: GardenPage,
@@ -27,7 +27,7 @@ function GardenPage() {
         alt="Abendlicher Biergarten unter Kastanien mit warmem Licht"
         eyebrow="Garden"
         title="Draußen zusammensitzen."
-        kicker="Biergarten, Restaurant und Gastgeber gehören hier zum selben Haus."
+        kicker="Biergarten, Restaurant und Haus gehören hier zusammen."
         actions={[
           { to: "/restaurant/reservieren", label: "Tisch im Haus", variant: "inverse" },
           { to: "/kontakt", label: "Heute nachfragen", variant: "wine" },
@@ -35,11 +35,8 @@ function GardenPage() {
       />
 
       <section className="bg-paper-50">
-        <div className="content-wide py-10 flex flex-wrap items-center justify-between gap-4">
-          <StatusLine label={`Saison & Wetter: ${hours.garden}`} />
-          <a href={site.phoneHref} className="text-sm underline underline-offset-4">
-            Heute anrufen
-          </a>
+        <div className="content-wide py-10">
+          <StatusLine label="Saison & witterungsabhängig" />
         </div>
       </section>
 
@@ -63,16 +60,17 @@ function GardenPage() {
           </div>
           <div className="lg:col-span-7">
             <p className="eyebrow text-wine-700">Essen & Trinken</p>
-            <h2 className="text-display-md mt-4">Dieselbe Küche. Mehr Luft.</h2>
+            <h2 className="text-display-md mt-4">Mehr Luft zum Sitzen.</h2>
             <p className="mt-5 text-lg text-charcoal-600">
-              Was innen gekocht wird, steht auch außen — soweit das Wetter mitspielt.
-              Bier vom Fass, Wein zum Essen.
+              Im Garten gilt dieselbe Gastfreundschaft wie im Haus — soweit das
+              Wetter mitspielt. Was aktuell serviert wird, sagen wir Ihnen mit
+              der Bestätigung Ihrer Anfrage.
             </p>
             <Link
               to="/restaurant/speisekarte"
               className={buttonVariants({ variant: "green", className: "mt-8" })}
             >
-              Speisen ansehen
+              Speisekarte
             </Link>
           </div>
         </div>
@@ -81,7 +79,7 @@ function GardenPage() {
       <EditorialSplit
         eyebrow="Praktisch"
         title="Finden Sie uns in der Schützenstraße."
-        body={`${site.address.street}, ${site.address.zip} ${site.address.city}. Der Garten folgt der Küche. Bei Regen bleibt das Haus offen.`}
+        body={`${site.address.street}, ${site.address.zip} ${site.address.city}. Der Garten folgt Saison und Wetter. Bei Regen bleibt das Haus offen.`}
         image={images.entrance}
         alt="Abendlicher Eingang des Hauses mit warmem Licht"
         reverse

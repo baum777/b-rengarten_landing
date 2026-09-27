@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { BookingForm } from "@/components/forms/inquiry-forms";
-import { site } from "@/lib/site";
 import { z } from "zod";
 
 const searchSchema = z.object({
@@ -27,7 +26,7 @@ function BookingPage() {
           <h1 className="text-display-md mt-3">Zimmer anfragen</h1>
           <p className="mt-4 text-lg text-charcoal-600">
             Keine anonyme Buchungsmaschine. Sie schreiben uns, wir prüfen und
-            bestätigen. Wenn es schnell gehen muss: {site.phone}.
+            bestätigen persönlich.
           </p>
         </div>
         <div className="lg:col-span-7 rounded-md border border-charcoal-900/12 bg-white p-6 md:p-8">

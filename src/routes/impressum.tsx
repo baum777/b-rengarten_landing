@@ -22,15 +22,10 @@ function ImprintPage() {
           <br />
           {site.address.zip} {site.address.city}
         </p>
-        <p>
-          Telefon: {site.phone}
-          <br />
-          E-Mail: {site.email}
-        </p>
         <p className="text-sm text-charcoal-600">
-          Rechtsform, Vertretung und Registereintrag werden vor einem
-          öffentlichen Launch mit der Betriebsführung abgeglichen. Diese Seite
-          dient der digitalen Orientierung des Hauses.
+          Kontaktwege (Telefon, E-Mail), Rechtsform, Vertretung und
+          Registereintrag werden mit der Betriebsführung bestätigt und hier
+          ergänzt. Diese Seite dient der digitalen Orientierung des Hauses.
         </p>
       </article>
     </main>

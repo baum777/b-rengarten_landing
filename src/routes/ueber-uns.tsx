@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HostIcon } from "@/components/brand/icons";
-import { ProofPrinciples } from "@/components/sections/home";
 import { Photo } from "@/components/media/photo";
 import { buttonVariants } from "@/components/ui/button";
 import { images } from "@/lib/site";
@@ -13,7 +12,7 @@ export const Route = createFileRoute("/ueber-uns")({
       {
         name: "description",
         content:
-          "Persönlich geführtes Haus in Ravensburg. Qualität, Ehrlichkeit und unvernünftige Gastfreundschaft.",
+          "Ein Ravensburger Haus mit Geschichte: Hotel, Restaurant und Biergarten in der Schützenstraße.",
       },
     ],
   }),
@@ -32,14 +31,14 @@ function AboutPage() {
             Unvernünftige Gastfreundschaft
           </h1>
           <p className="mt-6 text-lg text-charcoal-600">
-            Hotel, Restaurant, Biergarten — ein Haus, persönlich geführt.
-            Qualität vor Quantität, klare Sprache, unkomplizierter Aufenthalt.
+            Hotel, Restaurant, Biergarten — ein Haus in der Schützenstraße.
+            Klare Sprache, unkomplizierter Aufenthalt.
           </p>
         </div>
         <div className="lg:col-span-6">
           <Photo
-            src={images.hostService}
-            alt="Gastgeber am Tisch beim Servieren"
+            src={images.restaurantInterior}
+            alt="Restaurantinnenraum mit Eichentischen und Blick in den Garten"
             ratio="3 / 4"
             className="rounded-md max-h-[36rem]"
           />
@@ -57,10 +56,6 @@ function AboutPage() {
           Haus mit Küche, Garten und Betten.
         </p>
       </section>
-
-      <div className="mt-16">
-        <ProofPrinciples />
-      </div>
 
       <div className="content-reading mt-16">
         <Link

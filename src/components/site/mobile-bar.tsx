@@ -3,7 +3,6 @@ import {
   CalendarIcon,
   LocationIcon,
   MenuCardIcon,
-  PhoneIcon,
   StayIcon,
   TableIcon,
 } from "@/components/brand/icons";
@@ -24,7 +23,7 @@ export function MobileActionBar() {
   }[] = pathname.startsWith("/hotel")
     ? [
         { to: "/hotel/buchen", label: "Verfügbarkeit", icon: CalendarIcon },
-        { href: site.phoneHref, label: "Anrufen", icon: PhoneIcon },
+        { to: "/kontakt", label: "Anfahrt", icon: LocationIcon },
       ]
     : pathname.startsWith("/restaurant")
       ? [
