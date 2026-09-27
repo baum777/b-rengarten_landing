@@ -211,7 +211,14 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  // `disableSignUp` is a binding invariant of the internal area (owner
+  // disposition 2026-09-27): sign-in yes, public self-registration never.
+  // Profiles are provisioned admin-managed; the one-time first-admin bootstrap
+  // keys off an ALREADY AUTHENTICATED identity (see
+  // `src/lib/permissions/bootstrap.server.ts`), never off this endpoint.
+  ...(emailAndPasswordEnabled
+    ? { emailAndPassword: { enabled: true, disableSignUp: true } }
+    : {}),
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a

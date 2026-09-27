@@ -96,6 +96,9 @@ export function SiteFooter() {
             <Link to="/ikonografie" className="hover:text-paper-50">
               Ikonografie
             </Link>
+            <Link to="/login" className="hover:text-paper-50">
+              Mitarbeiter
+            </Link>
           </nav>
         </div>
       </div>

@@ -87,6 +87,9 @@ export const Route = createRootRoute({
 function RootDocument() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/";
+  // The internal area carries its own shell (InternalShell, /intern layout
+  // route) — public header/footer/mobile bar never mount under /intern/*.
+  const isInternal = pathname.startsWith("/intern");
 
   useEffect(() => {
     const html = document.documentElement;
@@ -106,7 +109,7 @@ function RootDocument() {
       <body
         className={cn(
           "bg-paper-50 text-charcoal-900",
-          isHome ? "h-dvh overflow-hidden" : "pb-14 md:pb-0",
+          isHome ? "h-dvh overflow-hidden" : isInternal ? "" : "pb-14 md:pb-0",
         )}
       >
         <PreviewHostBridge />
@@ -117,12 +120,12 @@ function RootDocument() {
           Zum Inhalt
         </a>
         <AuthProvider>
-          <SiteHeader />
+          {isInternal ? null : <SiteHeader />}
           <div id="inhalt">
             <Outlet />
           </div>
-          {isHome ? null : <SiteFooter />}
-          {isHome ? null : <MobileActionBar />}
+          {isHome || isInternal ? null : <SiteFooter />}
+          {isHome || isInternal ? null : <MobileActionBar />}
         </AuthProvider>
         <script
           type="application/ld+json"
