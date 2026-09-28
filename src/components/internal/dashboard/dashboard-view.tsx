@@ -173,7 +173,10 @@ const CARD_RENDERERS: Record<string, (ctx: CardContext) => ReactNode> = {
     const bands = data.response.bands;
     const oldest = values[metric.id];
     const staleCount = values[stale.id];
-    const { level, provisional } = evaluateMetric(metric, oldest);
+    const { level } = evaluateMetric(metric, oldest);
+    // „vorläufig" ist eine Eigenschaft der Schwellenwerte in der Registry,
+    // nicht des aktuellen Werts — auch im Leerzustand gilt der Hinweis.
+    const provisional = metric.thresholds?.provisional ?? false;
     return (
       <>
         {oldest === null ? (
