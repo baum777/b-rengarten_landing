@@ -13,15 +13,19 @@ import { can, type Capability, type StaffContext } from "@/lib/permissions/roles
  * `staff` is null only on /intern/kein-zugriff (no active profile): the shell
  * then renders without navigation, just identity + sign-out.
  */
-type NavItem = { to: string; label: string; capability: Capability };
+type NavItem = { to: string; label: string; capability?: Capability };
 type NavGroup = { label: string; items: NavItem[] };
 
 /**
- * Grouped target structure (Heute / Betrieb / Steuerung). Only routes that
- * actually exist are listed — the shell never renders dead navigation. BETRIEB
- * (Anfragen, Aufgaben, Auslastung, Briefings) and STEUERUNG (Datenflüsse,
- * Team, Auswertung) gain entries as their routes ship; groups without items
- * are omitted from the render.
+ * Grouped target structure (Heute / Konto, später Betrieb / Steuerung). Only
+ * routes that actually exist are listed — the shell never renders dead
+ * navigation. BETRIEB (Anfragen, Aufgaben, Auslastung, Briefings) and
+ * STEUERUNG (Datenflüsse, Team, Auswertung) gain entries as their routes ship;
+ * groups without items are omitted from the render.
+ *
+ * Items without a capability are session self-service for every staff member
+ * (e.g. the own password); the /intern layout route already guarantees an
+ * active staff profile for the whole tree.
  */
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -31,13 +35,19 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/intern/dashboard", label: "Übersicht", capability: "kpis:read" },
     ],
   },
+  {
+    label: "Konto",
+    items: [{ to: "/intern/passwort", label: "Passwort" }],
+  },
 ];
 
 function navGroupsFor(staff: StaffContext | null): NavGroup[] {
   if (!staff) return [];
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => can(staff.role, item.capability)),
+    items: group.items.filter(
+      (item) => item.capability === undefined || can(staff.role, item.capability),
+    ),
   })).filter((group) => group.items.length > 0);
 }
 
