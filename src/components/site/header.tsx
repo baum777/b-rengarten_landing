@@ -70,11 +70,18 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden xl:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-6 xl:gap-2">
+          <Link
+            to="/login"
+            className="micro uppercase tracking-[0.14em] transition-opacity duration-200 hover:opacity-70"
+          >
+            Login
+          </Link>
           <Link
             to="/hotel/buchen"
             className={buttonVariants({
               variant: inverted ? "inverse" : "wine",
+              className: "hidden xl:inline-flex",
             })}
           >
             Zimmer
@@ -83,9 +90,10 @@ export function SiteHeader() {
             to="/restaurant/reservieren"
             className={buttonVariants({
               variant: inverted ? "secondary" : "green",
-              className: inverted
-                ? "border-paper-50/40 text-paper-50 hover:bg-paper-50/10"
-                : undefined,
+              className: cn(
+                "hidden xl:inline-flex",
+                inverted ? "border-paper-50/40 text-paper-50 hover:bg-paper-50/10" : undefined,
+              ),
             })}
           >
             Tisch
@@ -136,6 +144,12 @@ export function SiteHeader() {
                 <Link to="/restaurant/reservieren">Tisch reservieren</Link>
               </Button>
             </div>
+            <Link
+              to="/login"
+              className="micro mt-5 flex min-h-11 items-center border-t border-charcoal-900/10 pt-4 uppercase tracking-[0.14em] text-charcoal-600 transition-opacity hover:opacity-70"
+            >
+              Login
+            </Link>
           </nav>
         </div>
       ) : null}
