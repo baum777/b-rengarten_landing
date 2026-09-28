@@ -121,6 +121,37 @@ export interface Dashboard {
   response: DashboardResponse;
   data_health: Record<string, DataHealthFacts>;
 }
+export interface InquiryTask {
+  id: string;
+  status: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  started: boolean;
+}
+export interface InquiryRow {
+  id: string;
+  type: "ROOM" | "TABLE" | "OCCASION";
+  guest_name: string;
+  email: string;
+  phone: string | null;
+  arrival: string | null;
+  departure: string | null;
+  guest_count: number;
+  status: string;
+  notes: string | null;
+  room: string | null;
+  occasion: string | null;
+  time: string | null;
+  created_at: string;
+  task: InquiryTask | null;
+}
+export interface InquiriesPage {
+  generated_at: string;
+  counts: { total: number; unanswered: number; in_progress: number; other: number };
+  unanswered: InquiryRow[];
+  in_progress: InquiryRow[];
+  other: InquiryRow[];
+}
 export const departments: string[];
 export const taskInput: z.ZodType;
 export const briefingInput: z.ZodType;
@@ -143,6 +174,8 @@ export function readDashboard(
     responseCriticalMinutes?: number;
   },
 ): Promise<Dashboard>;
+export function readInquiries(db: Database, actor: string): Promise<InquiriesPage>;
+export function changeInquiryStatus(db: Database, actor: string, input: unknown): Promise<void>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(

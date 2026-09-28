@@ -558,3 +558,114 @@ export async function changeStaff(db, actor, input) {
     }
   });
 }
+const INQUIRY_STATUSES = ["NEW", "REVIEWED", "CONTACTED", "CONFIRMED", "DECLINED", "CLOSED"];
+export async function readInquiries(db, actor) {
+  return db.transaction(async (tx) => {
+    await staff(tx, actor, true);
+    const [clock] = await tx.query("select now()::text as generated_at");
+    // Active inquiries only (the pipeline pages never show terminal ones);
+    // same "taken over" definition as the dashboard response metric: the
+    // follow-up task carries any event beyond task.created.
+    const rows = await tx.query(
+      `select i.id, i.type, i.guest_name, i.email, i.phone,
+              i.arrival::text as arrival, i.departure::text as departure,
+              i.guest_count, i.status,
+              i.payload_json->>'notes' as notes,
+              i.payload_json->>'room' as room,
+              i.payload_json->>'occasion' as occasion,
+              i.payload_json->>'time' as time,
+              i.created_at::text as created_at,
+              t.id as task_id, t.status as task_status,
+              t.assignee_user_id as task_assignee_id,
+              p.display_name as task_assignee_name,
+              exists (
+                select 1 from task_events e
+                where e.task_id = t.id and e.event_type <> 'task.created'
+              ) as task_started
+       from inquiries i
+       left join tasks t on t.source_type='inquiry' and t.source_id = i.id
+       left join staff_profiles p on p.user_id = t.assignee_user_id
+       where i.status not in ('CLOSED','DECLINED','CONFIRMED')
+       order by i.created_at asc
+       limit 100`,
+    );
+    const inquiries = rows.map((r) => ({
+      id: r.id,
+      type: r.type,
+      guest_name: r.guest_name,
+      email: r.email,
+      phone: r.phone,
+      arrival: r.arrival,
+      departure: r.departure,
+      guest_count: r.guest_count,
+      status: r.status,
+      notes: r.notes,
+      room: r.room,
+      occasion: r.occasion,
+      time: r.time,
+      created_at: r.created_at,
+      task: r.task_id
+        ? {
+            id: r.task_id,
+            status: r.task_status,
+            assignee_id: r.task_assignee_id,
+            assignee_name: r.task_assignee_name,
+            started: r.task_started,
+          }
+        : null,
+    }));
+    const isUnanswered = (r) => r.status === "NEW" && r.task !== null && !r.task.started;
+    const isInProgress = (r) =>
+      r.task !== null && r.task.started && !["DONE", "CANCELLED"].includes(r.task.status);
+    const unanswered = inquiries.filter(isUnanswered);
+    const inProgress = inquiries.filter((r) => !isUnanswered(r) && isInProgress(r));
+    const other = inquiries.filter((r) => !isUnanswered(r) && !isInProgress(r));
+    return {
+      generated_at: clock.generated_at,
+      counts: {
+        total: inquiries.length,
+        unanswered: unanswered.length,
+        in_progress: inProgress.length,
+        other: other.length,
+      },
+      unanswered,
+      in_progress: inProgress,
+      other,
+    };
+  });
+}
+export async function changeInquiryStatus(db, actor, input) {
+  const d = z
+    .object({ id, status: z.enum(INQUIRY_STATUSES) })
+    .strict()
+    .parse(input);
+  return db.transaction(async (tx) => {
+    await staff(tx, actor, true);
+    const [cur] = await tx.query("select status from inquiries where id=$1 for update", [d.id]);
+    if (!cur) throw new Error("NOT_FOUND");
+    const transitions = {
+      NEW: ["REVIEWED", "DECLINED", "CLOSED"],
+      REVIEWED: ["CONTACTED", "DECLINED", "CLOSED"],
+      CONTACTED: ["CONFIRMED", "DECLINED", "CLOSED"],
+      CONFIRMED: ["CLOSED"],
+      DECLINED: [],
+      CLOSED: [],
+    };
+    if (!transitions[cur.status].includes(d.status)) throw new Error("INVALID_TRANSITION");
+    await tx.query("update inquiries set status=$2, updated_at=now() where id=$1", [
+      d.id,
+      d.status,
+    ]);
+    const type = {
+      REVIEWED: "inquiry.reviewed",
+      CONTACTED: "inquiry.contacted",
+      CONFIRMED: "inquiry.confirmed",
+      DECLINED: "inquiry.declined",
+      CLOSED: "inquiry.closed",
+    }[d.status];
+    await event(tx, type, "inquiry", d.id, actor, d.id, "INTERNAL");
+    await audit(tx, actor, "inquiry.status.changed", d.id, { status: cur.status }, {
+      status: d.status,
+    });
+  });
+}

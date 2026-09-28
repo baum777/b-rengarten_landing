@@ -117,7 +117,7 @@ export const METRICS: MetricDefinition[] = [
       provisional: true,
       note: "Arbeitswerte für die erste Betriebsphase; Bestätigung durch den Betrieb steht aus.",
     },
-    action: { label: "Aufgaben mit Handlungsbedarf öffnen", href: "/intern/heute" },
+    action: { label: "Anfragen öffnen", href: "/intern/anfragen" },
     freshnessSlaMinutes: 5,
     measurement: "AVAILABLE",
     attention: {

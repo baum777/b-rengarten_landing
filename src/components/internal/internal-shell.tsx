@@ -17,10 +17,10 @@ type NavItem = { to: string; label: string; capability?: Capability };
 type NavGroup = { label: string; items: NavItem[] };
 
 /**
- * Grouped target structure (Heute / Konto, später Betrieb / Steuerung). Only
+ * Grouped target structure (Heute / Betrieb / Konto, später Steuerung). Only
  * routes that actually exist are listed — the shell never renders dead
- * navigation. BETRIEB (Anfragen, Aufgaben, Auslastung, Briefings) and
- * STEUERUNG (Datenflüsse, Team, Auswertung) gain entries as their routes ship;
+ * navigation. STEUERUNG (Datenflüsse, Team, Auswertung) and further BETRIEB
+ * entries (Aufgaben, Auslastung, Briefings) gain items as their routes ship;
  * groups without items are omitted from the render.
  *
  * Items without a capability are session self-service for every staff member
@@ -34,6 +34,10 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/intern/heute", label: "Heute", capability: "tasks:read:own" },
       { to: "/intern/dashboard", label: "Übersicht", capability: "kpis:read" },
     ],
+  },
+  {
+    label: "Betrieb",
+    items: [{ to: "/intern/anfragen", label: "Anfragen", capability: "inquiries:manage" }],
   },
   {
     label: "Konto",

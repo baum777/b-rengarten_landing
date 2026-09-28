@@ -21,6 +21,12 @@ describe("internal shell: password self-service", () => {
     assert.ok(shell.includes('{ to: "/intern/passwort", label: "Passwort" }'));
   });
 
+  it("shell lists the inquiries route behind its manage capability", () => {
+    assert.ok(
+      shell.includes('{ to: "/intern/anfragen", label: "Anfragen", capability: "inquiries:manage" }'),
+    );
+  });
+
   it("capability is optional and only self-service items omit it", () => {
     assert.ok(shell.includes("capability?: Capability"));
     assert.match(shell, /item\.capability === undefined \|\| can\(/);

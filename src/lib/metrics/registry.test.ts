@@ -39,7 +39,12 @@ describe("metric registry", () => {
   });
 
   it("only links actions to routes that exist", () => {
-    const routes = new Set(["/intern/dashboard", "/intern/heute", "/intern/kein-zugriff"]);
+    const routes = new Set([
+      "/intern/dashboard",
+      "/intern/heute",
+      "/intern/anfragen",
+      "/intern/kein-zugriff",
+    ]);
     for (const metric of METRICS) {
       if (metric.action) assert.ok(routes.has(metric.action.href), metric.action.href);
     }

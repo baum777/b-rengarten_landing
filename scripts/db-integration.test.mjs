@@ -17,6 +17,8 @@ import {
   recordOccupancy,
   readToday,
   readDashboard,
+  readInquiries,
+  changeInquiryStatus,
   changeStaff,
 } from "./operations.mjs";
 const url = process.env.TEST_DATABASE_URL;
@@ -489,3 +491,102 @@ suite("bootstrap remains closed even after the original admin profile is removed
     { message: "BOOTSTRAP_CLOSED" },
   );
 });
+suite(
+  "inquiries page: groups follow takeover semantics, pipeline writes audit trail",
+  async () => {
+    const input = {
+      type: "ROOM",
+      name: "Pipeline Testgast",
+      email: "pipeline@example.invalid",
+      arrival: "2030-02-01",
+      departure: "2030-02-04",
+      guests: 3,
+      notes: "Ruhiges Zimmer bitte",
+    };
+    const older = await persistInquiry(db, input);
+    const newer = await persistInquiry(db, { ...input, type: "TABLE", name: "Pipeline Zweiter" });
+    const finishable = await persistInquiry(db, { ...input, type: "OCCASION", name: "Pipeline Fertig" });
+    // the previous suite deliberately removed the original admin profile:
+    // this pipeline suite mints its own admin actor via direct SQL
+    const pipelineAdminId = randomUUID();
+    await db.query(
+      `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+       values($1,'Pipeline Admin','pipeline-admin@example.invalid',true,now(),now())`,
+      [pipelineAdminId],
+    );
+    await db.query(
+      `insert into staff_profiles(id,user_id,email,display_name,role,department)
+       values($1,$2,'pipeline-admin@example.invalid','Pipeline Admin','ADMIN','MANAGEMENT')`,
+      [randomUUID(), pipelineAdminId],
+    );
+    const dashboardBefore = await readDashboard(db, pipelineAdminId);
+
+    const page = await readInquiries(db, pipelineAdminId);
+    const inGroup = (group, id) => page[group].some((r) => r.id === id);
+    assert.equal(inGroup("unanswered", older), true);
+    assert.equal(inGroup("unanswered", newer), true);
+    assert.equal(inGroup("in_progress", older), false);
+    // oldest first inside the unanswered group
+    assert.ok(
+      page.unanswered.findIndex((r) => r.id === older) <
+        page.unanswered.findIndex((r) => r.id === newer),
+    );
+    // payload round-trips across the boundary
+    const olderRow = page.unanswered.find((r) => r.id === older);
+    assert.equal(olderRow.notes, "Ruhiges Zimmer bitte");
+    assert.equal(olderRow.guest_count, 3);
+
+    // takeover via the follow-up task moves the row between groups and
+    // decrements exactly the dashboard response counter
+    await changeTask(db, pipelineAdminId, { id: olderRow.task.id, status: "IN_PROGRESS" });
+    const afterTakeover = await readInquiries(db, pipelineAdminId);
+    assert.equal(afterTakeover.unanswered.some((r) => r.id === older), false);
+    assert.equal(afterTakeover.in_progress.some((r) => r.id === older), true);
+    assert.equal(afterTakeover.in_progress[0].task.assignee_id, null);
+    const dashboardAfter = await readDashboard(db, pipelineAdminId);
+    assert.equal(
+      dashboardAfter.response.unanswered,
+      dashboardBefore.response.unanswered - 1,
+    );
+
+    // finish the third inquiry's follow-up task: OPEN -> IN_PROGRESS -> DONE
+    const finishRow = page.unanswered.find((r) => r.id === finishable);
+    await changeTask(db, pipelineAdminId, { id: finishRow.task.id, status: "IN_PROGRESS" });
+    await changeTask(db, pipelineAdminId, { id: finishRow.task.id, status: "DONE" });
+    const afterDone = await readInquiries(db, pipelineAdminId);
+    assert.equal(afterDone.other.some((r) => r.id === finishable), true);
+
+    // pipeline status writer: valid transitions, audit trail, rejections
+    await changeInquiryStatus(db, pipelineAdminId, { id: older, status: "REVIEWED" });
+    await changeInquiryStatus(db, pipelineAdminId, { id: older, status: "CLOSED" });
+    const events = await db.query(
+      "select event_type from operational_events where correlation_id=$1 and entity_type='inquiry' and event_type like 'inquiry.%' order by occurred_at",
+      [older],
+    );
+    assert.deepEqual(
+      events.map((e) => e.event_type),
+      ["inquiry.reviewed", "inquiry.closed"],
+    );
+    const audits = await db.query(
+      "select action from audit_log where entity_id=$1 and action='inquiry.status.changed'",
+      [older],
+    );
+    assert.equal(audits.length, 2);
+    await assert.rejects(
+      changeInquiryStatus(db, pipelineAdminId, { id: older, status: "REVIEWED" }),
+      { message: "INVALID_TRANSITION" },
+    );
+    await assert.rejects(
+      changeInquiryStatus(db, pipelineAdminId, { id: "does-not-exist", status: "CLOSED" }),
+      { message: "NOT_FOUND" },
+    );
+    // closed inquiries leave the page entirely
+    const final = await readInquiries(db, pipelineAdminId);
+    assert.equal(
+      [...final.unanswered, ...final.in_progress, ...final.other].some((r) => r.id === older),
+      false,
+    );
+    // admin-only surface
+    await assert.rejects(readInquiries(db, staffId));
+  },
+);

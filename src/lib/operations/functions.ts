@@ -33,6 +33,31 @@ export const getDashboard = createServerFn({ method: "GET" })
       responseCriticalMinutes: bands?.criticalMinutes ?? 120,
     });
   });
+export const getInquiries = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .validator((x: unknown) => z.object({}).strict().parse(x ?? {}))
+  .handler(async ({ context }) => {
+    const { getSql } = await import("@/lib/db");
+    const { readInquiries } = await import("../../../scripts/operations.mjs");
+    return readInquiries(await getSql(), context.staff.userId);
+  });
+export const setInquiryStatus = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .validator((x: unknown) =>
+    z
+      .object({
+        id: z.string().max(100),
+        status: z.enum(["NEW", "REVIEWED", "CONTACTED", "CONFIRMED", "DECLINED", "CLOSED"]),
+      })
+      .strict()
+      .parse(x),
+  )
+  .handler(async ({ context, data }) => {
+    const { getSql } = await import("@/lib/db");
+    const { changeInquiryStatus } = await import("../../../scripts/operations.mjs");
+    await changeInquiryStatus(await getSql(), context.staff.userId, data);
+    return { ok: true };
+  });
 export const updateTask = createServerFn({ method: "POST" })
   .middleware([requireStaff])
   .validator((x: unknown) =>
