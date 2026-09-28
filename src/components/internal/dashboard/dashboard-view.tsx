@@ -293,6 +293,14 @@ const CARD_RENDERERS: Record<string, (ctx: CardContext) => ReactNode> = {
 
   card_occupancy: ({ occupancy, occupancyDelta, occupancySpark, lastCaptured }) => {
     const metric = requiredMetric("occupancy_rate");
+    const openOccupancy = metric.action ? (
+      <Link
+        to={metric.action.href}
+        className="mt-2 inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:text-wine-700"
+      >
+        {metric.action.label}
+      </Link>
+    ) : null;
     return occupancy ? (
       <>
         <p className="mt-3 flex items-baseline gap-2">
@@ -315,6 +323,7 @@ const CARD_RENDERERS: Record<string, (ctx: CardContext) => ReactNode> = {
           Quelle: {occupancy.source === "manual" ? "manuelle Erfassung" : occupancy.source} ·{" "}
           {CLASS_LABELS[metric.cls]} ohne Zielwert
         </p>
+        {openOccupancy}
       </>
     ) : (
       <>
@@ -327,6 +336,7 @@ const CARD_RENDERERS: Record<string, (ctx: CardContext) => ReactNode> = {
             Letzter erfasster Tag: {lastCaptured.date}
           </p>
         ) : null}
+        {openOccupancy}
       </>
     );
   },

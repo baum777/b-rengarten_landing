@@ -61,3 +61,44 @@ describe("internal shell: password self-service", () => {
     assert.equal((page.match(/autoComplete="new-password"/g) ?? []).length, 2);
   });
 });
+
+describe("internal shell: occupancy page", () => {
+  const shell = read("src/components/internal/internal-shell.tsx");
+  const page = read("src/routes/intern/auslastung.tsx");
+
+  it("shell lists the occupancy route behind the admin-only read capability", () => {
+    assert.ok(
+      shell.includes('{ to: "/intern/auslastung", label: "Auslastung", capability: "occupancy:read" }'),
+    );
+  });
+
+  it("page renders the honest 0–100 % trend chart, not a custom scale", () => {
+    assert.ok(page.includes("OccupancyTrendChart"));
+    assert.ok(page.includes("value: d.occupancy_rate"));
+  });
+
+  it("capture form carries exactly the six agreed fields", () => {
+    // five numeric fields flow through the numberField helper, the date
+    // field carries its id literally
+    assert.ok(page.includes('id="occ-date"'));
+    for (const id of [
+      "occ-total",
+      "occ-free",
+      "occ-occupied",
+      "occ-arrivals",
+      "occ-departures",
+    ]) {
+      assert.ok(page.includes(`numberField("${id}"`), `missing field ${id}`);
+    }
+  });
+
+  it("capture goes through the existing audited writer, not a hand-rolled insert", () => {
+    assert.ok(page.includes("addOccupancy"));
+    assert.ok(!page.includes("insert into occupancy_snapshots"));
+  });
+
+  it("capture errors and success are announced (role=alert / role=status)", () => {
+    assert.ok(page.includes('role="alert"'));
+    assert.ok(page.includes('role="status"'));
+  });
+});

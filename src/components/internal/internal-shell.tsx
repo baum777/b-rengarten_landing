@@ -20,7 +20,7 @@ type NavGroup = { label: string; items: NavItem[] };
  * Grouped target structure (Heute / Betrieb / Konto, später Steuerung). Only
  * routes that actually exist are listed — the shell never renders dead
  * navigation. STEUERUNG (Datenflüsse, Team, Auswertung) and further BETRIEB
- * entries (Aufgaben, Auslastung, Briefings) gain items as their routes ship;
+ * entries (Briefings) gain items as their routes ship;
  * groups without items are omitted from the render.
  *
  * Items without a capability are session self-service for every staff member
@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/intern/anfragen", label: "Anfragen", capability: "inquiries:manage" },
       { to: "/intern/aufgaben", label: "Aufgaben", capability: "tasks:read:all" },
+      { to: "/intern/auslastung", label: "Auslastung", capability: "occupancy:read" },
     ],
   },
   {

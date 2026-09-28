@@ -20,6 +20,7 @@ import {
   readInquiries,
   changeInquiryStatus,
   readTasks,
+  readOccupancy,
   changeStaff,
 } from "./operations.mjs";
 const url = process.env.TEST_DATABASE_URL;
@@ -650,4 +651,135 @@ suite("tasks page: overdue/open/in-progress/blocked grouping and today completio
   const assigned = (await readTasks(db, tasksAdminId)).open.find((t) => t.id === noDue);
   assert.equal(assigned.assignee_id, tasksAdminId);
   assert.equal(assigned.assignee_name, "Tasks Admin");
+});
+
+suite("occupancy page: today capture, per-day trend and 30d comparison", async () => {
+  // the bootstrap-closure suite removes the original admin profile: mint a
+  // fresh admin actor for this page
+  const occAdminId = randomUUID();
+  await db.query(
+    `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+     values($1,'Occupancy Admin','occupancy-admin@example.invalid',true,now(),now())`,
+    [occAdminId],
+  );
+  await db.query(
+    `insert into staff_profiles(id,user_id,email,display_name,role,department)
+     values($1,$2,'occupancy-admin@example.invalid','Occupancy Admin','ADMIN','MANAGEMENT')`,
+    [randomUUID(), occAdminId],
+  );
+  // a non-admin for the negative read/capture path
+  const occStaffId = randomUUID();
+  await db.query(
+    `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+     values($1,'Occupancy Staff','occupancy-staff@example.invalid',true,now(),now())`,
+    [occStaffId],
+  );
+  await db.query(
+    `insert into staff_profiles(id,user_id,email,display_name,role,department)
+     values($1,$2,'occupancy-staff@example.invalid','Occupancy Staff','STAFF','RECEPTION')`,
+    [randomUUID(), occStaffId],
+  );
+
+  const berlinToday = () =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  // offsets anchor on the Berlin calendar day, never on the UTC day — the
+  // fixtures must land on the same dates the page reads
+  const dayIso = (offsetDays) => {
+    const d = new Date(`${berlinToday()}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  };
+
+  // yesterday + 20 days ago via the writer; two captures today — latest wins
+  await recordOccupancy(db, occAdminId, {
+    date: dayIso(-1),
+    roomsTotal: 12,
+    roomsAvailable: 7,
+    roomsOccupied: 5,
+    arrivals: 2,
+    departures: 1,
+  });
+  await recordOccupancy(db, occAdminId, {
+    date: dayIso(-20),
+    roomsTotal: 12,
+    roomsAvailable: 10,
+    roomsOccupied: 2,
+    arrivals: null,
+    departures: null,
+  });
+  await recordOccupancy(db, occAdminId, {
+    date: berlinToday(),
+    roomsTotal: 12,
+    roomsAvailable: 6,
+    roomsOccupied: 6,
+    arrivals: 3,
+    departures: 3,
+  });
+  await recordOccupancy(db, occAdminId, {
+    date: berlinToday(),
+    roomsTotal: 12,
+    roomsAvailable: 5,
+    roomsOccupied: 7,
+    arrivals: 1,
+    departures: null,
+  });
+
+  const page = await readOccupancy(db, occAdminId);
+  assert.equal(page.today, berlinToday());
+
+  // today's snapshot is strictly today's latest capture (50 %, not the 6 am 50→58 % earlier one)
+  assert.equal(page.today_snapshot.date, berlinToday());
+  assert.equal(page.today_snapshot.occupancy_rate, 7 / 12);
+  assert.equal(page.today_snapshot.rooms_free, 5);
+  assert.equal(page.today_snapshot.arrivals, 1);
+  assert.equal(page.today_snapshot.departures, null);
+
+  // fallback points at the most recent capture overall — with today captured,
+  // that IS today; the morning state is proven further below
+  assert.equal(page.latest_snapshot.date, berlinToday());
+  assert.equal(page.latest_snapshot.occupancy_rate, 7 / 12);
+
+  // one row per day, ascending, latest capture per day
+  const dayDates = page.days.map((d) => d.date);
+  assert.ok(dayDates.includes(dayIso(-20)));
+  assert.ok(dayDates.includes(dayIso(-1)));
+  assert.ok(dayDates.includes(berlinToday()));
+  assert.equal(dayDates.filter((d) => d === berlinToday()).length, 1);
+  assert.ok(dayDates.indexOf(dayIso(-20)) < dayDates.indexOf(dayIso(-1)));
+  const todayRow = page.days.find((d) => d.date === berlinToday());
+  assert.equal(todayRow.occupancy_rate, 7 / 12);
+
+  // comparison averages over ALL raw snapshots in the window (earlier suites
+  // add fixtures here too), not only the latest per day
+  const raw = await db.query(
+    `select occupancy_rate::float as r from occupancy_snapshots
+     where date > (now() at time zone 'Europe/Berlin')::date - 30`,
+  );
+  assert.ok(raw.length >= 5);
+  const expectedCurrent = raw.reduce((a, r) => a + r.r, 0) / raw.length;
+  assert.ok(Math.abs(page.compare.current_avg - expectedCurrent) < 1e-9);
+
+  // negative: staff role is denied both the read and the capture
+  await assert.rejects(() => readOccupancy(db, occStaffId), /ACCESS_DENIED/);
+  await assert.rejects(() =>
+    recordOccupancy(db, occStaffId, {
+      date: berlinToday(),
+      roomsTotal: 12,
+      roomsAvailable: 5,
+      roomsOccupied: 7,
+      arrivals: null,
+      departures: null,
+    }),
+  /ACCESS_DENIED/);
+
+  // morning state: no capture for today yet — headline falls back to the most
+  // recent earlier day. All of today's rows go (no later suite reads them);
+  // yesterday's rows stay, so the fallback has something real to point at.
+  await db.query(
+    "delete from occupancy_snapshots where date = (now() at time zone 'Europe/Berlin')::date",
+  );
+  const morning = await readOccupancy(db, occAdminId);
+  assert.equal(morning.today_snapshot, null);
+  assert.equal(morning.latest_snapshot.date, dayIso(-1));
+  assert.ok(morning.days.every((d) => d.date !== berlinToday()));
 });

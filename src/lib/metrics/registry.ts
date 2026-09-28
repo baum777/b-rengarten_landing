@@ -256,6 +256,7 @@ export const METRICS: MetricDefinition[] = [
     measure:
       "Belegte Zimmer geteilt durch Zimmer gesamt im letzten Tageswert. Ohne Datenquelle wird der Wert nicht als 0 geführt.",
     unit: "percent",
+    action: { label: "Auslastung öffnen", href: "/intern/auslastung" },
     measurement: "AVAILABLE",
   },
   {

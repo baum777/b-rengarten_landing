@@ -740,3 +740,54 @@ export async function readTasks(db, actor) {
     };
   });
 }
+/**
+ * Occupancy page read: today's capture (strictly the Berlin day), the most
+ * recent capture overall (fallback state + capacity prefill), the per-day
+ * trend over the last 30 Berlin days and the 30-vs-previous-30 average
+ * comparison — all with the exact semantics of the dashboard's occupancy
+ * card: latest snapshot per day, day resolution, never invented values.
+ */
+export async function readOccupancy(db, actor) {
+  return db.transaction(async (tx) => {
+    await staff(tx, actor, true);
+    const [clock] = await tx.query(
+      "select now()::text as generated_at, (now() at time zone 'Europe/Berlin')::date::text as today",
+    );
+    const cols = `date::text as date, occupancy_rate::float as occupancy_rate, arrivals, departures,
+        rooms_total, rooms_occupied, (rooms_total - rooms_occupied) as rooms_free,
+        captured_at::text as captured_at, source`;
+    const [todaySnapshot] = await tx.query(
+      `select ${cols} from occupancy_snapshots
+       where date = (now() at time zone 'Europe/Berlin')::date
+       order by captured_at desc limit 1`,
+    );
+    const [latestSnapshot] = await tx.query(
+      `select ${cols} from occupancy_snapshots
+       order by date desc, captured_at desc limit 1`,
+    );
+    // One row per day (latest capture wins), ascending — this feeds both the
+    // trend chart and the history list, so they can never disagree.
+    const days = await tx.query(
+      `select distinct on (date) ${cols}
+       from occupancy_snapshots
+       where date > (now() at time zone 'Europe/Berlin')::date - 30
+       order by date asc, captured_at desc`,
+    );
+    const [compare] = await tx.query(
+      `select
+        (select avg(occupancy_rate)::float from occupancy_snapshots
+          where date > (now() at time zone 'Europe/Berlin')::date - 30) as current_avg,
+        (select avg(occupancy_rate)::float from occupancy_snapshots
+          where date > (now() at time zone 'Europe/Berlin')::date - 60
+            and date <= (now() at time zone 'Europe/Berlin')::date - 30) as previous_avg`,
+    );
+    return {
+      generated_at: clock.generated_at,
+      today: clock.today,
+      today_snapshot: todaySnapshot ?? null,
+      latest_snapshot: latestSnapshot ?? null,
+      days,
+      compare,
+    };
+  });
+}

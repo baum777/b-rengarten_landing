@@ -191,6 +191,26 @@ export interface TasksPage {
   blocked: TaskRow[];
   done_today: TasksDoneRow[];
 }
+export interface OccupancySnapshotRow {
+  date: string;
+  occupancy_rate: number;
+  arrivals: number | null;
+  departures: number | null;
+  rooms_total: number;
+  rooms_occupied: number;
+  rooms_free: number;
+  captured_at: string;
+  source: string;
+}
+export interface OccupancyPage {
+  generated_at: string;
+  today: string;
+  today_snapshot: OccupancySnapshotRow | null;
+  latest_snapshot: OccupancySnapshotRow | null;
+  /** Latest snapshot per Berlin day, ascending, last 30 days. */
+  days: OccupancySnapshotRow[];
+  compare: { current_avg: number | null; previous_avg: number | null };
+}
 export const departments: string[];
 export const taskInput: z.ZodType;
 export const briefingInput: z.ZodType;
@@ -216,6 +236,7 @@ export function readDashboard(
 export function readInquiries(db: Database, actor: string): Promise<InquiriesPage>;
 export function changeInquiryStatus(db: Database, actor: string, input: unknown): Promise<void>;
 export function readTasks(db: Database, actor: string): Promise<TasksPage>;
+export function readOccupancy(db: Database, actor: string): Promise<OccupancyPage>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(
