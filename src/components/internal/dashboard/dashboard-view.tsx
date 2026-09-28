@@ -361,6 +361,14 @@ const CARD_RENDERERS: Record<string, (ctx: CardContext) => ReactNode> = {
         <p className="micro mt-auto pt-3 text-charcoal-600">
           {demandTrendLabel} · {CLASS_LABELS[volume.cls]} · Website live
         </p>
+        {volume.action ? (
+          <Link
+            to={volume.action.href}
+            className="mt-2 inline-flex min-h-11 items-center text-sm underline underline-offset-4 hover:text-wine-700"
+          >
+            {volume.action.label}
+          </Link>
+        ) : null}
       </>
     );
   },

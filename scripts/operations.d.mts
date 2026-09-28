@@ -211,6 +211,48 @@ export interface OccupancyPage {
   days: OccupancySnapshotRow[];
   compare: { current_avg: number | null; previous_avg: number | null };
 }
+export interface EvaluationInquiries {
+  total: number;
+  s_new: number;
+  s_reviewed: number;
+  s_contacted: number;
+  s_confirmed: number;
+  s_declined: number;
+  s_closed: number;
+  t_room: number;
+  t_table: number;
+  t_occasion: number;
+  with_arrival: number;
+  avg_lead_days: number | null;
+  responded: number;
+  avg_response_minutes: number | null;
+}
+export interface EvaluationTaskDepartment {
+  department: string;
+  completed: number;
+}
+export interface EvaluationTasks {
+  created: number;
+  completed: number;
+  avg_complete_hours: number | null;
+  by_department: EvaluationTaskDepartment[];
+}
+export interface EvaluationOccupancy {
+  days_captured: number;
+  avg_rate: number | null;
+  arrivals_total: number;
+  departures_total: number;
+  best: { date: string; rate: number } | null;
+  worst: { date: string; rate: number } | null;
+}
+export interface EvaluationPage {
+  generated_at: string;
+  today: string;
+  window: { days: number; from: string };
+  inquiries: EvaluationInquiries;
+  tasks: EvaluationTasks;
+  occupancy: EvaluationOccupancy;
+}
 export const departments: string[];
 export const taskInput: z.ZodType;
 export const briefingInput: z.ZodType;
@@ -237,6 +279,11 @@ export function readInquiries(db: Database, actor: string): Promise<InquiriesPag
 export function changeInquiryStatus(db: Database, actor: string, input: unknown): Promise<void>;
 export function readTasks(db: Database, actor: string): Promise<TasksPage>;
 export function readOccupancy(db: Database, actor: string): Promise<OccupancyPage>;
+export function readEvaluation(
+  db: Database,
+  actor: string,
+  options?: { days?: number },
+): Promise<EvaluationPage>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(

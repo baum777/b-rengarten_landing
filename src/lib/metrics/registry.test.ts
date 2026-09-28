@@ -45,6 +45,7 @@ describe("metric registry", () => {
       "/intern/anfragen",
       "/intern/aufgaben",
       "/intern/auslastung",
+      "/intern/auswertung",
       "/intern/kein-zugriff",
     ]);
     for (const metric of METRICS) {

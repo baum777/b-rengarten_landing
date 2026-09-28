@@ -297,6 +297,7 @@ export const METRICS: MetricDefinition[] = [
     measure:
       "Anfragen, die weder abgeschlossen noch abgelehnt noch bestätigt sind, ergänzt um die Zahl der Eingänge des heutigen Tages (Berlin-Zeit).",
     unit: "count",
+    action: { label: "Auswertung öffnen", href: "/intern/auswertung" },
     measurement: "AVAILABLE",
   },
   {

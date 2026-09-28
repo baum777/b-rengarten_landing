@@ -21,6 +21,7 @@ import {
   changeInquiryStatus,
   readTasks,
   readOccupancy,
+  readEvaluation,
   changeStaff,
 } from "./operations.mjs";
 const url = process.env.TEST_DATABASE_URL;
@@ -782,4 +783,136 @@ suite("occupancy page: today capture, per-day trend and 30d comparison", async (
   assert.equal(morning.today_snapshot, null);
   assert.equal(morning.latest_snapshot.date, dayIso(-1));
   assert.ok(morning.days.every((d) => d.date !== berlinToday()));
+});
+
+suite("evaluation page: window aggregates over inquiries, tasks, occupancy", async () => {
+  const evalAdminId = randomUUID();
+  await db.query(
+    `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+     values($1,'Eval Admin','eval-admin@example.invalid',true,now(),now())`,
+    [evalAdminId],
+  );
+  await db.query(
+    `insert into staff_profiles(id,user_id,email,display_name,role,department)
+     values($1,$2,'eval-admin@example.invalid','Eval Admin','ADMIN','MANAGEMENT')`,
+    [randomUUID(), evalAdminId],
+  );
+  const evalStaffId = randomUUID();
+  await db.query(
+    `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+     values($1,'Eval Staff','eval-staff@example.invalid',true,now(),now())`,
+    [evalStaffId],
+  );
+  await db.query(
+    `insert into staff_profiles(id,user_id,email,display_name,role,department)
+     values($1,$2,'eval-staff@example.invalid','Eval Staff','STAFF','RECEPTION')`,
+    [randomUUID(), evalStaffId],
+  );
+
+  const berlinToday = () =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  const dayIso = (offsetDays) => {
+    const d = new Date(`${berlinToday()}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const before = await readEvaluation(db, evalAdminId, { days: 30 });
+
+  // three inquiries: two with arrival (lead time), one without; exactly one
+  // gets a status change → exactly one event-proven response
+  const inq1 = await persistInquiry(db, {
+    type: "ROOM",
+    name: "Eval Anfragende A",
+    email: "eval-a@example.invalid",
+    arrival: dayIso(14),
+    departure: dayIso(16),
+    guests: 2,
+  });
+  const inq2 = await persistInquiry(db, {
+    type: "TABLE",
+    name: "Eval Anfragende B",
+    email: "eval-b@example.invalid",
+    arrival: null,
+    departure: null,
+    guests: 4,
+  });
+  await persistInquiry(db, {
+    type: "OCCASION",
+    name: "Eval Anfragende C",
+    email: "eval-c@example.invalid",
+    arrival: dayIso(30),
+    departure: dayIso(31),
+    guests: 20,
+  });
+  await changeInquiryStatus(db, evalAdminId, { id: inq1, status: "REVIEWED" });
+
+  // two direct tasks, one completed (OPEN → IN_PROGRESS → DONE)
+  const t1 = await createTask(db, evalAdminId, { title: "Eval Aufgabe 1", department: "KITCHEN" });
+  await createTask(db, evalAdminId, { title: "Eval Aufgabe 2", department: "KITCHEN" });
+  await changeTask(db, evalAdminId, { id: t1, status: "IN_PROGRESS" });
+  await changeTask(db, evalAdminId, { id: t1, status: "DONE" });
+
+  await recordOccupancy(db, evalAdminId, {
+    date: berlinToday(),
+    roomsTotal: 10,
+    roomsAvailable: 3,
+    roomsOccupied: 7,
+    arrivals: 4,
+    departures: 2,
+  });
+  await recordOccupancy(db, evalAdminId, {
+    date: dayIso(-5),
+    roomsTotal: 10,
+    roomsAvailable: 5,
+    roomsOccupied: 5,
+    arrivals: null,
+    departures: null,
+  });
+
+  const page = await readEvaluation(db, evalAdminId, { days: 30 });
+  assert.equal(page.window.days, 30);
+  assert.equal(page.window.from, dayIso(-29));
+  assert.equal(page.today, berlinToday());
+
+  // exact deltas over the shared database — earlier suites' rows cancel out
+  assert.equal(page.inquiries.total - before.inquiries.total, 3);
+  assert.equal(page.inquiries.s_new - before.inquiries.s_new, 2);
+  assert.equal(page.inquiries.t_room - before.inquiries.t_room, 1);
+  assert.equal(page.inquiries.t_table - before.inquiries.t_table, 1);
+  assert.equal(page.inquiries.t_occasion - before.inquiries.t_occasion, 1);
+  // exactly one inquiry received a status event
+  assert.equal(page.inquiries.responded - before.inquiries.responded, 1);
+  assert.ok((page.inquiries.avg_response_minutes ?? -1) > 0);
+  assert.equal(page.inquiries.with_arrival - before.inquiries.with_arrival, 2);
+  assert.ok((page.inquiries.avg_lead_days ?? -1) > 0);
+
+  // persistInquiry mints a follow-up task per inquiry: 2 direct + 3 derived
+  assert.equal(page.tasks.created - before.tasks.created, 5);
+  assert.equal(page.tasks.completed - before.tasks.completed, 1);
+  assert.ok((page.tasks.avg_complete_hours ?? -1) > 0);
+  const kitchenBefore =
+    before.tasks.by_department.find((d) => d.department === "KITCHEN")?.completed ?? 0;
+  const kitchenAfter =
+    page.tasks.by_department.find((d) => d.department === "KITCHEN")?.completed ?? 0;
+  assert.equal(kitchenAfter - kitchenBefore, 1);
+
+  assert.equal(page.occupancy.days_captured - before.occupancy.days_captured, 2);
+  assert.ok(page.occupancy.avg_rate !== null && page.occupancy.avg_rate >= 0 && page.occupancy.avg_rate <= 1);
+  assert.equal(page.occupancy.arrivals_total - before.occupancy.arrivals_total, 4);
+  assert.equal(page.occupancy.departures_total - before.occupancy.departures_total, 2);
+  assert.ok(page.occupancy.best && page.occupancy.worst);
+
+  // the 90-day window is a different window, same semantics
+  const wide = await readEvaluation(db, evalAdminId, { days: 90 });
+  assert.equal(wide.window.days, 90);
+  assert.equal(wide.window.from, dayIso(-89));
+  assert.ok(wide.inquiries.total >= page.inquiries.total);
+  assert.ok(wide.occupancy.days_captured >= page.occupancy.days_captured);
+
+  // negative: staff role denied
+  await assert.rejects(() => readEvaluation(db, evalStaffId, { days: 30 }), /ACCESS_DENIED/);
+
+  // ids were used, not discarded
+  assert.ok(inq2);
 });

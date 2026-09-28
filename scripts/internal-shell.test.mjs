@@ -102,3 +102,32 @@ describe("internal shell: occupancy page", () => {
     assert.ok(page.includes('role="status"'));
   });
 });
+
+describe("internal shell: evaluation page", () => {
+  const shell = read("src/components/internal/internal-shell.tsx");
+  const page = read("src/routes/intern/auswertung.tsx");
+
+  it("shell opens the STEUERUNG group with the evaluation route", () => {
+    assert.ok(shell.includes('label: "Steuerung"'));
+    assert.ok(
+      shell.includes('{ to: "/intern/auswertung", label: "Auswertung", capability: "kpis:read" }'),
+    );
+  });
+
+  it("page reads the range from the URL, not from component state", () => {
+    assert.ok(page.includes("validateSearch"));
+    assert.ok(page.includes('z.enum(["30", "90"])'));
+    assert.ok(page.includes("loaderDeps"));
+  });
+
+  it("every section degrades to an honest empty state", () => {
+    assert.ok(page.includes("Keine Anfragen im Zeitraum."));
+    assert.ok(page.includes("Keine Aufgaben im Zeitraum."));
+    assert.ok(page.includes("Keine Belegungswerte im Zeitraum."));
+  });
+
+  it("response time is labelled as event-proven, never implied for all inquiries", () => {
+    assert.ok(page.includes("ereignisbelegt"));
+    assert.ok(page.includes("keine Statuswechsel erfasst"));
+  });
+});

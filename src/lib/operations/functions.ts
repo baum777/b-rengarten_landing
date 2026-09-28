@@ -74,6 +74,21 @@ export const getOccupancy = createServerFn({ method: "GET" })
     const { readOccupancy } = await import("../../../scripts/operations.mjs");
     return readOccupancy(await getSql(), context.staff.userId);
   });
+export const getEvaluation = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .validator((x: unknown) =>
+    z
+      .object({ days: z.enum(["30tage", "90tage"]).default("30tage") })
+      .strict()
+      .parse(x ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    const { getSql } = await import("@/lib/db");
+    const { readEvaluation } = await import("../../../scripts/operations.mjs");
+    return readEvaluation(await getSql(), context.staff.userId, {
+      days: data.days === "90tage" ? 90 : 30,
+    });
+  });
 export const updateTask = createServerFn({ method: "POST" })
   .middleware([requireStaff])
   .validator((x: unknown) =>

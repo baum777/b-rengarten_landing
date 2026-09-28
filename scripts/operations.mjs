@@ -791,3 +791,115 @@ export async function readOccupancy(db, actor) {
     };
   });
 }
+const EVALUATION_RANGES = [30, 90];
+/**
+ * Evaluation read over a sliding window (Berlin days): inquiry pipeline with
+ * event-proven response times, task volume and completion speed, occupancy
+ * window aggregates. Every number is derived from real columns/events only —
+ * nothing is interpolated across days without captures, and response/completion
+ * speeds are averaged solely over rows where both timestamps exist.
+ */
+export async function readEvaluation(db, actor, options = {}) {
+  const days = EVALUATION_RANGES.includes(options.days) ? options.days : 30;
+  return db.transaction(async (tx) => {
+    await staff(tx, actor, true);
+    const [clock] = await tx.query(
+      `select now()::text as generated_at,
+              (now() at time zone 'Europe/Berlin')::date::text as today,
+              ((now() at time zone 'Europe/Berlin')::date - $1::int + 1)::text as window_from`,
+      [days],
+    );
+    const span = "now() - ($1::int * interval '1 day')";
+    const [inquiries] = await tx.query(
+      `select count(*)::int as total,
+        count(*) filter (where status='NEW')::int as s_new,
+        count(*) filter (where status='REVIEWED')::int as s_reviewed,
+        count(*) filter (where status='CONTACTED')::int as s_contacted,
+        count(*) filter (where status='CONFIRMED')::int as s_confirmed,
+        count(*) filter (where status='DECLINED')::int as s_declined,
+        count(*) filter (where status='CLOSED')::int as s_closed,
+        count(*) filter (where type='ROOM')::int as t_room,
+        count(*) filter (where type='TABLE')::int as t_table,
+        count(*) filter (where type='OCCASION')::int as t_occasion,
+        count(arrival)::int as with_arrival,
+        avg(arrival - (created_at at time zone 'Europe/Berlin')::date)::float as avg_lead_days
+       from inquiries where created_at > ${span}`,
+      [days],
+    );
+    // Response time is event-proven: first INTERNAL status event per inquiry
+    // (inquiry.reviewed/contacted/…) — never inferred from status alone,
+    // because rows predating the event log have no measurable response.
+    const [response] = await tx.query(
+      `select count(*)::int as responded,
+        avg(extract(epoch from (fe.first_at - i.created_at)) / 60)::float as avg_response_minutes
+       from inquiries i
+       join lateral (
+         select min(occurred_at) as first_at from operational_events e
+         where e.entity_type='inquiry' and e.entity_id=i.id and e.direction='INTERNAL'
+       ) fe on true
+       where i.created_at > ${span} and fe.first_at is not null`,
+      [days],
+    );
+    const [taskVolume] = await tx.query(
+      `select count(*) filter (where created_at > ${span})::int as created,
+        count(*) filter (where completed_at > ${span})::int as completed
+       from tasks`,
+      [days],
+    );
+    const [taskSpeed] = await tx.query(
+      `select count(*)::int as completed,
+        avg(extract(epoch from (completed_at - created_at)) / 3600)::float as avg_complete_hours
+       from tasks where completed_at > ${span}`,
+      [days],
+    );
+    const taskByDepartment = await tx.query(
+      `select department, count(*)::int as completed
+       from tasks where completed_at > ${span}
+       group by department order by completed desc, department asc`,
+      [days],
+    );
+    const [occupancy] = await tx.query(
+      `select count(*)::int as days_captured,
+        avg(occupancy_rate)::float as avg_rate,
+        coalesce(sum(arrivals), 0)::int as arrivals_total,
+        coalesce(sum(departures), 0)::int as departures_total
+       from occupancy_snapshots
+       where date > (now() at time zone 'Europe/Berlin')::date - $1::int`,
+      [days],
+    );
+    const [best] = await tx.query(
+      `select date::text as date, occupancy_rate::float as rate
+       from occupancy_snapshots
+       where date > (now() at time zone 'Europe/Berlin')::date - $1::int
+       order by occupancy_rate desc, date asc limit 1`,
+      [days],
+    );
+    const [worst] = await tx.query(
+      `select date::text as date, occupancy_rate::float as rate
+       from occupancy_snapshots
+       where date > (now() at time zone 'Europe/Berlin')::date - $1::int
+       order by occupancy_rate asc, date asc limit 1`,
+      [days],
+    );
+    return {
+      generated_at: clock.generated_at,
+      today: clock.today,
+      window: { days, from: clock.window_from },
+      inquiries: { ...inquiries, ...response },
+      tasks: {
+        created: taskVolume.created,
+        completed: taskVolume.completed,
+        avg_complete_hours: taskSpeed.avg_complete_hours,
+        by_department: taskByDepartment,
+      },
+      occupancy: {
+        days_captured: occupancy.days_captured,
+        avg_rate: occupancy.avg_rate,
+        arrivals_total: occupancy.arrivals_total,
+        departures_total: occupancy.departures_total,
+        best: best ?? null,
+        worst: worst ?? null,
+      },
+    };
+  });
+}
