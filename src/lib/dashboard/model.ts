@@ -4,7 +4,19 @@
  * shaping and formatting are unit-testable and hydration-stable: relative
  * ages are always computed against the server-provided `generated_at`, never
  * against the client clock.
+ *
+ * Semantics (what a number means, when it becomes a warning, who is
+ * accountable) live in the metric registry — this module only turns the
+ * registry plus the server payload into text and states.
  */
+
+import {
+  attentionMetrics,
+  evaluateMetric,
+  metricById,
+  type MetricLevel,
+} from "../metrics/registry.ts";
+import { formatAgeFromMinutes, minutesSince } from "../metrics/data-quality.ts";
 
 export type RangeId = "heute" | "7tage" | "30tage";
 
@@ -66,6 +78,22 @@ export type ActionTask = {
   assignee_name: string | null;
 };
 
+export type DashboardResponse = {
+  unanswered: number;
+  beyond_target: number;
+  beyond_warning: number;
+  beyond_critical: number;
+  oldest_unanswered_at: string | null;
+  bands: { targetMinutes: number; warningMinutes: number; criticalMinutes: number };
+};
+
+export type DataHealthFacts = {
+  records: number;
+  lastRecordAt: string | null;
+  incomplete: number;
+  inconsistent: number;
+};
+
 export type DashboardData = {
   generated_at: string;
   today: string;
@@ -78,10 +106,18 @@ export type DashboardData = {
   task_series: SeriesPoint[];
   recent_inquiries: RecentInquiry[];
   action_tasks: ActionTask[];
+  response: DashboardResponse;
+  data_health: {
+    website: DataHealthFacts;
+    tasks: DataHealthFacts;
+    staff: DataHealthFacts;
+    occupancy_manual: DataHealthFacts;
+    pms: DataHealthFacts;
+  };
 };
 
 /** An inquiry counts as stale — and lands in the attention bar — after this. */
-export const INQUIRY_STALE_HOURS = 24;
+export const INQUIRY_STALE_HOURS = metricById("inquiry_stale_age")?.thresholds?.attentionAfterHours ?? 24;
 
 const INQUIRY_TYPES: Record<RecentInquiry["type"], string> = {
   ROOM: "Zimmeranfrage",
@@ -137,16 +173,20 @@ export const priorityLabel = (priority: string): string => PRIORITIES[priority] 
 
 /** "vor 8 Min." / "vor 3 Std." / "vor 2 Tg." — for ages shown in lists. */
 export function relativeAge(iso: string | null | undefined, nowIso: string): string {
-  if (!iso) return "";
-  const ms = new Date(nowIso).getTime() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "gerade eben";
-  const minutes = Math.floor(ms / 60_000);
+  const minutes = minutesSince(iso, nowIso);
+  return minutes === null ? "" : formatAgeFromMinutes(minutes);
+}
+
+/** "42 Min." / "3 Std. 12 Min." / "1 Tg. 4 Std." — metric values in minutes. */
+export function formatDuration(minutes: number | null): string {
+  if (minutes === null) return "–";
   if (minutes < 1) return "gerade eben";
-  if (minutes < 60) return `vor ${minutes} Min.`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `vor ${hours} Std.`;
-  const days = Math.floor(hours / 24);
-  return `vor ${days} Tg.`;
+  if (minutes < 60) return `${minutes} Min.`;
+  const rest = minutes % 60;
+  if (minutes < 1440) return rest ? `${Math.floor(minutes / 60)} Std. ${rest} Min.` : `${Math.floor(minutes / 60)} Std.`;
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  return hours ? `${days} Tg. ${hours} Std.` : `${days} Tg.`;
 }
 
 /** "14:32" Berlin wall-clock, for the Datenstand metadata. */
@@ -219,8 +259,11 @@ export function percentPointsDelta(current: number | null, previous: number | nu
 }
 
 // ---------------------------------------------------------------------------
-// Attention — only real thresholds. Critical = an actual deadline breach;
-// warning = needs attention but not breached. Nothing here invents urgency.
+// Metric readings + attention. The attention bar is no longer a hand-written
+// list: every metric that can raise one declares its own title, and the level
+// comes from the registry thresholds evaluated against the reading below.
+// Nothing invents urgency — an item only exists where a declared threshold was
+// actually crossed.
 // ---------------------------------------------------------------------------
 
 export type AttentionSeverity = "critical" | "warning";
@@ -232,45 +275,59 @@ export type AttentionItem = {
   detail: string;
 };
 
-export function buildAttention(counts: DashboardCounts): AttentionItem[] {
+/**
+ * Scalar reading per metric id. `null` means "not measurable right now" — a
+ * missing source, a day without a capture — and never means zero.
+ */
+export function readMetricValues(data: DashboardData): Record<string, number | null> {
+  const { counts, occupancy_today: occupancy, response } = data;
+  const oldestUnanswered = minutesSince(response.oldest_unanswered_at, data.generated_at);
+  return {
+    inquiry_response: oldestUnanswered,
+    inquiry_stale_age: counts.stale_inquiries,
+    room_readiness: null,
+    task_backlog: counts.open_tasks,
+    task_overdue: counts.overdue_tasks,
+    task_blocked: counts.blocked_tasks,
+    occupancy_rate: occupancy?.occupancy_rate ?? null,
+    arrivals: occupancy?.arrivals ?? null,
+    departures: occupancy?.departures ?? null,
+    inquiry_volume: counts.open_inquiries,
+    active_staff: counts.active_staff,
+  };
+}
+
+/** Registry level of one metric, for card colouring and status text. */
+export function metricState(
+  data: DashboardData,
+  metricId: string,
+): { level: MetricLevel; value: number | null; provisional: boolean } {
+  const metric = metricById(metricId);
+  const value = readMetricValues(data)[metricId] ?? null;
+  if (!metric) return { level: "unrated", value, provisional: false };
+  const evaluation = evaluateMetric(metric, value);
+  return { level: evaluation.level, value, provisional: evaluation.provisional };
+}
+
+export function buildAttention(data: DashboardData): AttentionItem[] {
+  const values = readMetricValues(data);
   const items: AttentionItem[] = [];
-  if (counts.overdue_tasks > 0) {
+  for (const metric of attentionMetrics()) {
+    const value = values[metric.id];
+    if (value === null || !metric.thresholds || !metric.attention) continue;
+    const { level } = evaluateMetric(metric, value);
+    if (level !== "warning" && level !== "critical") continue;
+    const severity: AttentionSeverity = level === "critical" ? "critical" : "warning";
     items.push({
-      id: "tasks-overdue",
-      severity: "critical",
-      severityLabel: "Kritisch",
-      title:
-        counts.overdue_tasks === 1
-          ? "1 Aufgabe überfällig"
-          : `${counts.overdue_tasks} Aufgaben überfällig`,
-      detail: "Fälligkeitsdatum ist überschritten.",
+      id: metric.id,
+      severity,
+      severityLabel: severity === "critical" ? "Kritisch" : "Hinweis",
+      title: metric.attention.title(Math.round(value), metric.thresholds, severity),
+      detail: metric.attention.detail,
     });
   }
-  if (counts.stale_inquiries > 0) {
-    items.push({
-      id: "inquiries-stale",
-      severity: "warning",
-      severityLabel: "Hinweis",
-      title:
-        counts.stale_inquiries === 1
-          ? "1 Anfrage länger als 24 h offen"
-          : `${counts.stale_inquiries} Anfragen länger als 24 h offen`,
-      detail: "Noch keinen Statuswechsel seit Eingang.",
-    });
-  }
-  if (counts.blocked_tasks > 0) {
-    items.push({
-      id: "tasks-blocked",
-      severity: "warning",
-      severityLabel: "Hinweis",
-      title:
-        counts.blocked_tasks === 1
-          ? "1 Aufgabe blockiert"
-          : `${counts.blocked_tasks} Aufgaben blockiert`,
-      detail: "Blockierte Aufgaben kommen nicht voran, bis der Blocker gelöst ist.",
-    });
-  }
-  return items;
+  // Critical first, registry order otherwise — deterministic across renders.
+  return items.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "critical" ? -1 : 1));
 }
 
 export const ATTENTION_CLEAR = {

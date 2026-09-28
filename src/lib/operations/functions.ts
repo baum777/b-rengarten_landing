@@ -20,7 +20,18 @@ export const getDashboard = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { getSql } = await import("@/lib/db");
     const { readDashboard } = await import("../../../scripts/operations.mjs");
-    return readDashboard(await getSql(), context.staff.userId, data.range);
+    // Thresholds live in the metric registry and travel into the aggregation
+    // as bound parameters — the dashboard never carries its own SQL literals.
+    const { metricById } = await import("@/lib/metrics/registry");
+    const stale = metricById("inquiry_stale_age");
+    const bands = metricById("inquiry_response")?.thresholds?.bands;
+    return readDashboard(await getSql(), context.staff.userId, {
+      range: data.range,
+      staleInquiryHours: stale?.thresholds?.attentionAfterHours ?? 24,
+      responseTargetMinutes: bands?.targetMinutes ?? 30,
+      responseWarningMinutes: bands?.warningMinutes ?? 60,
+      responseCriticalMinutes: bands?.criticalMinutes ?? 120,
+    });
   });
 export const updateTask = createServerFn({ method: "POST" })
   .middleware([requireStaff])

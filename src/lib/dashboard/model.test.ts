@@ -10,16 +10,21 @@ import {
   fillHourlySeries,
   formatClock,
   formatDueLabel,
+  formatDuration,
   formatGuests,
   formatPercent,
   formatStay,
   inquiryPointTotal,
+  metricState,
   percentPointsDelta,
   priorityLabel,
+  readMetricValues,
   relativeAge,
   sparkline,
   taskStatusLabel,
   type DashboardCounts,
+  type DashboardData,
+  type DataHealthFacts,
   type InquirySeriesPoint,
 } from "./model.ts";
 
@@ -36,6 +41,43 @@ const emptyCounts: DashboardCounts = {
   completed_tasks_today: 0,
   active_staff: 0,
 };
+
+const noFacts = (): DataHealthFacts => ({
+  records: 0,
+  lastRecordAt: null,
+  incomplete: 0,
+  inconsistent: 0,
+});
+
+/** A dashboard payload with everything empty — the "nothing happened" baseline. */
+export const emptyData = (): DashboardData => ({
+  generated_at: NOW,
+  today: "2026-09-28",
+  range: { id: "7tage", days: 7 },
+  counts: emptyCounts,
+  occupancy_today: null,
+  occupancy_series: [],
+  occupancy_compare: { current_avg: null, previous_avg: null },
+  inquiry_series: { granularity: "day", points: [] },
+  task_series: [],
+  recent_inquiries: [],
+  action_tasks: [],
+  response: {
+    unanswered: 0,
+    beyond_target: 0,
+    beyond_warning: 0,
+    beyond_critical: 0,
+    oldest_unanswered_at: null,
+    bands: { targetMinutes: 30, warningMinutes: 60, criticalMinutes: 120 },
+  },
+  data_health: {
+    website: noFacts(),
+    tasks: noFacts(),
+    staff: noFacts(),
+    occupancy_manual: noFacts(),
+    pms: noFacts(),
+  },
+});
 
 describe("labels", () => {
   it("map operational enums to German staff language", () => {
@@ -80,16 +122,18 @@ describe("percentPointsDelta", () => {
 
 describe("buildAttention", () => {
   it("is quiet when everything is inside thresholds", () => {
-    assert.deepEqual(buildAttention(emptyCounts), []);
+    assert.deepEqual(buildAttention(emptyData()), []);
   });
 
   it("escalates overdue tasks to critical, staleness and blocks to warnings", () => {
-    const items = buildAttention({
+    const data = emptyData();
+    data.counts = {
       ...emptyCounts,
       overdue_tasks: 2,
       stale_inquiries: 1,
       blocked_tasks: 3,
-    });
+    };
+    const items = buildAttention(data);
     assert.deepEqual(
       items.map((i) => [i.severity, i.title]),
       [
@@ -101,8 +145,90 @@ describe("buildAttention", () => {
     assert.equal(INQUIRY_STALE_HOURS, 24);
   });
 
+  it("names the crossed response band, critical first", () => {
+    const data = emptyData();
+    data.response = {
+      ...data.response,
+      unanswered: 1,
+      beyond_warning: 1,
+      beyond_critical: 1,
+      oldest_unanswered_at: "2026-09-28T09:35:00+02:00", // 150 min
+    };
+    data.counts = { ...emptyCounts, overdue_tasks: 1 };
+    assert.deepEqual(
+      buildAttention(data).map((i) => [i.severity, i.title]),
+      [
+        ["critical", "Unbeantwortete Anfrage älter als 120 Min."],
+        ["critical", "1 Aufgabe überfällig"],
+      ],
+    );
+  });
+
+  it("reports the warning band while the critical band is not yet reached", () => {
+    const data = emptyData();
+    data.response = {
+      ...data.response,
+      oldest_unanswered_at: "2026-09-28T10:50:00+02:00", // 75 min
+    };
+    assert.deepEqual(
+      buildAttention(data).map((i) => [i.severity, i.title]),
+      [["warning", "Unbeantwortete Anfrage älter als 60 Min."]],
+    );
+  });
+
+  it("stays silent below the first band and with no unanswered inquiry at all", () => {
+    const data = emptyData();
+    assert.deepEqual(buildAttention(data), []);
+    data.response = {
+      ...data.response,
+      oldest_unanswered_at: "2026-09-28T11:50:00+02:00", // 15 min → inside target
+    };
+    assert.deepEqual(buildAttention(data), []);
+  });
+
   it("keeps a clear verdict constant for the empty state", () => {
     assert.ok(ATTENTION_CLEAR.title.includes("Keine kritischen"));
+  });
+});
+
+describe("metric readings", () => {
+  it("turns payload rows into registry values, null instead of zero", () => {
+    const data = emptyData();
+    assert.equal(readMetricValues(data).inquiry_response, null);
+    data.occupancy_today = {
+      date: "2026-09-28",
+      occupancy_rate: 0.62,
+      arrivals: 8,
+      departures: 5,
+      rooms_total: 20,
+      rooms_occupied: 12,
+      captured_at: NOW,
+      source: "manual",
+    };
+    const values = readMetricValues(data);
+    assert.equal(values.occupancy_rate, 0.62);
+    assert.equal(values.arrivals, 8);
+    assert.equal(values.room_readiness, null);
+  });
+
+  it("grades values through the registry, and reports a missing source as unavailable", () => {
+    const data = emptyData();
+    assert.equal(metricState(data, "inquiry_response").level, "unavailable");
+    assert.equal(metricState(data, "room_readiness").level, "unavailable");
+    data.counts = { ...emptyCounts, overdue_tasks: 1 };
+    const overdue = metricState(data, "task_overdue");
+    assert.equal(overdue.level, "critical");
+    assert.equal(overdue.provisional, true);
+  });
+});
+
+describe("formatDuration", () => {
+  it("renders metric ages in minutes, hours and days", () => {
+    assert.equal(formatDuration(null), "–");
+    assert.equal(formatDuration(42), "42 Min.");
+    assert.equal(formatDuration(120), "2 Std.");
+    assert.equal(formatDuration(192), "3 Std. 12 Min.");
+    assert.equal(formatDuration(1620), "1 Tg. 3 Std.");
   });
 });
 

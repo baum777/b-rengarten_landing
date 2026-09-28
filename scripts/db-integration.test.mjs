@@ -345,21 +345,69 @@ suite(
     assert.equal(kpi.action_tasks[1].assignee_name, "Test Identity");
     assert.ok(kpi.occupancy_series.length >= 1);
 
-    const hourly = await readDashboard(db, adminId, "heute");
+    const hourly = await readDashboard(db, adminId, { range: "heute" });
     assert.equal(hourly.range.days, 1);
     assert.equal(hourly.inquiry_series.granularity, "hour");
     assert.ok(hourly.inquiry_series.points.length >= 1);
     assert.equal(hourly.occupancy_series.length, 1);
 
-    const monthly = await readDashboard(db, adminId, "30tage");
+    const monthly = await readDashboard(db, adminId, { range: "30tage" });
     assert.equal(monthly.range.days, 30);
     assert.equal(monthly.inquiry_series.granularity, "day");
     assert.equal(monthly.occupancy_series.length, 2);
     assert.equal(monthly.occupancy_compare.current_avg === null, false);
     assert.equal(monthly.occupancy_compare.previous_avg, null);
 
-    const unknown = await readDashboard(db, adminId, "nonsense");
+    const unknown = await readDashboard(db, adminId, { range: "nonsense" });
     assert.equal(unknown.range.id, "7tage");
+  },
+);
+
+suite(
+  "measurement layer: registry thresholds, response bands, data quality",
+  async () => {
+    // Thresholds are parameters, not SQL literals: a caller that declares a
+    // wider staleness rule must see a different set, without touching SQL.
+    const wide = await readDashboard(db, adminId, { staleInquiryHours: 96 });
+    const narrow = await readDashboard(db, adminId, { staleInquiryHours: 1 });
+    assert.equal(wide.counts.stale_inquiries, 0);
+    assert.ok(narrow.counts.stale_inquiries >= 1);
+
+    // Response metric: "unanswered" is event-sourced. An inquiry whose
+    // follow-up task never left OPEN still counts; one that was started does not.
+    const started = await persistInquiry(db, {
+      type: "TABLE",
+      name: "Started Guest",
+      email: "started@example.invalid",
+      guests: 4,
+    });
+    const [task] = await db.query("select id from tasks where source_id=$1", [started]);
+    const before = await readDashboard(db, adminId, {
+      responseTargetMinutes: 30,
+      responseWarningMinutes: 60,
+      responseCriticalMinutes: 120,
+    });
+    assert.ok(before.response.unanswered >= 1);
+    assert.equal(before.response.bands.criticalMinutes, 120);
+    assert.ok(before.response.oldest_unanswered_at);
+    assert.ok(before.response.beyond_critical >= 1);
+    await changeTask(db, adminId, { id: task.id, status: "IN_PROGRESS" });
+    const after = await readDashboard(db, adminId, {});
+    assert.equal(after.response.unanswered, before.response.unanswered - 1);
+
+    // Data-quality facts: aggregates only, with honest gaps.
+    const health = await readDashboard(db, adminId, {});
+    assert.ok(health.data_health.website.records > 0);
+    assert.ok(health.data_health.website.lastRecordAt);
+    assert.ok(health.data_health.tasks.records > 0);
+    assert.ok(health.data_health.staff.records >= 1);
+    assert.equal(health.data_health.pms.records, 0);
+    assert.equal(health.data_health.pms.lastRecordAt, null);
+    // The recorded snapshot has departures=null, so it is incomplete by definition.
+    assert.ok(health.data_health.occupancy_manual.incomplete >= 1);
+    assert.equal(health.data_health.occupancy_manual.inconsistent, 0);
+    // The hand-inserted stale inquiry has no follow-up task — a real gap.
+    assert.ok(health.data_health.website.inconsistent >= 1);
   },
 );
 suite(

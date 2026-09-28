@@ -299,7 +299,21 @@ export async function readToday(db, actor) {
  */
 const DASHBOARD_RANGES = { heute: 1, "7tage": 7, "30tage": 30 };
 
-export async function readDashboard(db, actor, rangeId = "7tage") {
+/**
+ * @param options.range analytic range id (see DASHBOARD_RANGES)
+ * @param options.staleInquiryHours age that defines the "still in status NEW"
+ *   attention set — comes from the metric registry, never from a SQL literal
+ * @param options.responseTargetMinutes / responseWarningMinutes /
+ *   responseCriticalMinutes age bands of the inquiry response metric
+ */
+export async function readDashboard(db, actor, options = {}) {
+  const {
+    range: rangeId = "7tage",
+    staleInquiryHours = 24,
+    responseTargetMinutes = 30,
+    responseWarningMinutes = 60,
+    responseCriticalMinutes = 120,
+  } = options;
   const days = DASHBOARD_RANGES[rangeId] ?? DASHBOARD_RANGES["7tage"];
   return db.transaction(async (tx) => {
     await staff(tx, actor, true);
@@ -309,13 +323,14 @@ export async function readDashboard(db, actor, rangeId = "7tage") {
     const [counts] = await tx.query(`select
  (select count(*)::int from inquiries where status not in ('CLOSED','DECLINED','CONFIRMED')) as open_inquiries,
  (select count(*)::int from inquiries where (created_at at time zone 'Europe/Berlin')::date=(now() at time zone 'Europe/Berlin')::date) as new_inquiries_today,
- (select count(*)::int from inquiries where status='NEW' and created_at < now() - interval '24 hours') as stale_inquiries,
+ (select count(*)::int from inquiries where status='NEW' and created_at < now() - ($1::int * interval '1 hour')) as stale_inquiries,
  (select min(created_at)::text from inquiries where status='NEW') as oldest_new_inquiry_at,
  (select count(*)::int from tasks where status not in ('DONE','CANCELLED')) as open_tasks,
  (select count(*)::int from tasks where status not in ('DONE','CANCELLED') and due_at<now()) as overdue_tasks,
  (select count(*)::int from tasks where status='BLOCKED') as blocked_tasks,
  (select count(*)::int from tasks where (completed_at at time zone 'Europe/Berlin')::date=(now() at time zone 'Europe/Berlin')::date) as completed_tasks_today,
- (select count(*)::int from staff_profiles where active) as active_staff`);
+ (select count(*)::int from staff_profiles where active) as active_staff`,
+      [staleInquiryHours]);
     const [occupancyToday] = await tx.query(
       `select date::text as date, occupancy_rate::float as occupancy_rate, arrivals, departures,
               rooms_total, rooms_occupied, captured_at::text as captured_at, source
@@ -400,6 +415,47 @@ export async function readDashboard(db, actor, rangeId = "7tage") {
                 t.created_at desc
        limit 8`,
     );
+    // Time-to-first-action for the inquiry response metric. "Unanswered" is
+    // event-sourced, not guessed: an inquiry counts as answered once its status
+    // left NEW or its auto-created follow-up task produced any event other
+    // than task.created (assigned/started/blocked/completed).
+    const [response] = await tx.query(
+      `with unanswered as (
+   select i.created_at
+   from inquiries i
+   where i.status='NEW'
+     and not exists (
+       select 1 from tasks t join task_events e on e.task_id=t.id
+       where t.source_type='inquiry' and t.source_id=i.id and e.event_type<>'task.created'
+     )
+ )
+ select (select count(*)::int from unanswered) as unanswered,
+   (select count(*)::int from unanswered where created_at < now() - ($1::int * interval '1 minute')) as beyond_target,
+   (select count(*)::int from unanswered where created_at < now() - ($2::int * interval '1 minute')) as beyond_warning,
+   (select count(*)::int from unanswered where created_at < now() - ($3::int * interval '1 minute')) as beyond_critical,
+   (select min(created_at)::text from unanswered) as oldest_unanswered_at`,
+      [responseTargetMinutes, responseWarningMinutes, responseCriticalMinutes],
+    );
+    // Data-quality facts: availability (counts), freshness (newest record),
+    // completeness (incomplete records) and consistency (records that
+    // contradict the rest of the data set). All aggregate, no row transfer.
+    const [health] = await tx.query(`select
+ (select count(*)::int from inquiries where status not in ('CLOSED','DECLINED','CONFIRMED')) as website_records,
+ (select max(created_at)::text from inquiries) as website_last_at,
+ (select count(*)::int from inquiries where status not in ('CLOSED','DECLINED','CONFIRMED') and arrival is null) as website_incomplete,
+ (select count(*)::int from inquiries i where i.status not in ('CLOSED','DECLINED','CONFIRMED')
+   and not exists (select 1 from tasks t where t.source_type='inquiry' and t.source_id=i.id)) as website_inconsistent,
+ (select count(*)::int from tasks where status not in ('DONE','CANCELLED')) as task_records,
+ (select max(updated_at)::text from tasks) as task_last_at,
+ (select count(*)::int from tasks where status not in ('DONE','CANCELLED') and due_at is null) as task_incomplete,
+ (select count(*)::int from staff_profiles where active) as staff_records,
+ (select max(updated_at)::text from staff_profiles) as staff_last_at,
+ (select count(*)::int from occupancy_snapshots where date=(now() at time zone 'Europe/Berlin')::date) as occupancy_records,
+ (select max(captured_at)::text from occupancy_snapshots) as occupancy_last_at,
+ (select count(*)::int from occupancy_snapshots where date=(now() at time zone 'Europe/Berlin')::date
+   and (arrivals is null or departures is null)) as occupancy_incomplete,
+ (select count(*)::int from occupancy_snapshots where date=(now() at time zone 'Europe/Berlin')::date and rooms_total>0
+   and abs(occupancy_rate - (rooms_occupied::float/rooms_total)) > 0.01) as occupancy_inconsistent`);
     return {
       generated_at: clock.generated_at,
       today: clock.today,
@@ -412,6 +468,45 @@ export async function readDashboard(db, actor, rangeId = "7tage") {
       task_series: taskRows,
       recent_inquiries: recentInquiries,
       action_tasks: actionTasks,
+      response: {
+        unanswered: response.unanswered,
+        beyond_target: response.beyond_target,
+        beyond_warning: response.beyond_warning,
+        beyond_critical: response.beyond_critical,
+        oldest_unanswered_at: response.oldest_unanswered_at,
+        bands: {
+          targetMinutes: responseTargetMinutes,
+          warningMinutes: responseWarningMinutes,
+          criticalMinutes: responseCriticalMinutes,
+        },
+      },
+      data_health: {
+        website: {
+          records: health.website_records,
+          lastRecordAt: health.website_last_at,
+          incomplete: health.website_incomplete,
+          inconsistent: health.website_inconsistent,
+        },
+        tasks: {
+          records: health.task_records,
+          lastRecordAt: health.task_last_at,
+          incomplete: health.task_incomplete,
+          inconsistent: 0,
+        },
+        staff: {
+          records: health.staff_records,
+          lastRecordAt: health.staff_last_at,
+          incomplete: 0,
+          inconsistent: 0,
+        },
+        occupancy_manual: {
+          records: health.occupancy_records,
+          lastRecordAt: health.occupancy_last_at,
+          incomplete: health.occupancy_incomplete,
+          inconsistent: health.occupancy_inconsistent,
+        },
+        pms: { records: 0, lastRecordAt: null, incomplete: 0, inconsistent: 0 },
+      },
     };
   });
 }

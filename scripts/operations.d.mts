@@ -80,6 +80,29 @@ export interface DashboardActionTask {
   assignee_name: string | null;
 }
 
+export interface DashboardResponseBands {
+  targetMinutes: number;
+  warningMinutes: number;
+  criticalMinutes: number;
+}
+
+export interface DashboardResponse {
+  unanswered: number;
+  beyond_target: number;
+  beyond_warning: number;
+  beyond_critical: number;
+  oldest_unanswered_at: string | null;
+  bands: DashboardResponseBands;
+}
+
+/** Data-quality facts per source; no rows cross the boundary. */
+export interface DataHealthFacts {
+  records: number;
+  lastRecordAt: string | null;
+  incomplete: number;
+  inconsistent: number;
+}
+
 export interface Dashboard {
   generated_at: string;
   today: string;
@@ -95,6 +118,8 @@ export interface Dashboard {
   task_series: DashboardSeriesPoint[];
   recent_inquiries: DashboardRecentInquiry[];
   action_tasks: DashboardActionTask[];
+  response: DashboardResponse;
+  data_health: Record<string, DataHealthFacts>;
 }
 export const departments: string[];
 export const taskInput: z.ZodType;
@@ -107,7 +132,17 @@ export function publishBriefing(db: Database, actor: string, input: unknown): Pr
 export function acknowledgeBriefing(db: Database, actor: string, id: string): Promise<void>;
 export function recordOccupancy(db: Database, actor: string, input: unknown): Promise<string>;
 export function readToday(db: Database, actor: string): Promise<Today>;
-export function readDashboard(db: Database, actor: string, rangeId?: DashboardRangeId): Promise<Dashboard>;
+export function readDashboard(
+  db: Database,
+  actor: string,
+  options?: {
+    range?: DashboardRangeId;
+    staleInquiryHours?: number;
+    responseTargetMinutes?: number;
+    responseWarningMinutes?: number;
+    responseCriticalMinutes?: number;
+  },
+): Promise<Dashboard>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(
