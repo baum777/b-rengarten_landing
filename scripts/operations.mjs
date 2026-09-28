@@ -137,12 +137,13 @@ export async function persistInquiry(db, input) {
       TABLE: "restaurant.reservation.inquiry.created",
       OCCASION: "occasion.inquiry.created",
     }[d.type];
+    const typeLabel = { ROOM: "Zimmer", TABLE: "Tisch", OCCASION: "Anlass" }[d.type];
     await event(tx, type, "inquiry", inquiryId, null, inquiryId, "INPUT");
     await tx.query(
       "insert into tasks(id,title,department,source_type,source_id) values($1,$2,$3,$4,$5)",
       [
         taskId,
-        `Neue ${d.type}-Anfrage bearbeiten`,
+        `Neue ${typeLabel}-Anfrage bearbeiten`,
         d.type === "TABLE" ? "RESTAURANT" : "RECEPTION",
         "inquiry",
         inquiryId,
@@ -291,28 +292,126 @@ export async function readToday(db, actor) {
     return { tasks, briefings };
   });
 }
-export async function readDashboard(db, actor) {
+/**
+ * Analytic range ids accepted by readDashboard. "heute" keeps operative KPIs
+ * unchanged (they are always today) and switches the inquiry chart to hourly
+ * buckets — the only granularity the underlying data actually has.
+ */
+const DASHBOARD_RANGES = { heute: 1, "7tage": 7, "30tage": 30 };
+
+export async function readDashboard(db, actor, rangeId = "7tage") {
+  const days = DASHBOARD_RANGES[rangeId] ?? DASHBOARD_RANGES["7tage"];
   return db.transaction(async (tx) => {
     await staff(tx, actor, true);
+    const [clock] = await tx.query(
+      "select now()::text as generated_at, (now() at time zone 'Europe/Berlin')::date::text as today",
+    );
     const [counts] = await tx.query(`select
  (select count(*)::int from inquiries where status not in ('CLOSED','DECLINED','CONFIRMED')) as open_inquiries,
  (select count(*)::int from inquiries where (created_at at time zone 'Europe/Berlin')::date=(now() at time zone 'Europe/Berlin')::date) as new_inquiries_today,
+ (select count(*)::int from inquiries where status='NEW' and created_at < now() - interval '24 hours') as stale_inquiries,
+ (select min(created_at)::text from inquiries where status='NEW') as oldest_new_inquiry_at,
  (select count(*)::int from tasks where status not in ('DONE','CANCELLED')) as open_tasks,
  (select count(*)::int from tasks where status not in ('DONE','CANCELLED') and due_at<now()) as overdue_tasks,
+ (select count(*)::int from tasks where status='BLOCKED') as blocked_tasks,
  (select count(*)::int from tasks where (completed_at at time zone 'Europe/Berlin')::date=(now() at time zone 'Europe/Berlin')::date) as completed_tasks_today,
  (select count(*)::int from staff_profiles where active) as active_staff`);
-    const [occupancy] = await tx.query(
-      "select arrivals,departures,occupancy_rate::float as occupancy_rate from occupancy_snapshots where date=(now() at time zone 'Europe/Berlin')::date order by captured_at desc limit 1",
+    const [occupancyToday] = await tx.query(
+      `select date::text as date, occupancy_rate::float as occupancy_rate, arrivals, departures,
+              rooms_total, rooms_occupied, captured_at::text as captured_at, source
+       from occupancy_snapshots
+       where date=(now() at time zone 'Europe/Berlin')::date
+       order by captured_at desc limit 1`,
     );
-    const inquiries = await tx.query(
-      "select request_id,type,status,created_at::text from inquiries order by created_at desc limit 20",
+    // Latest snapshot per day; occupancy has day resolution (manual capture),
+    // never invent intraday values.
+    const occupancySeries = await tx.query(
+      `select distinct on (date) date::text as date, occupancy_rate::float as value
+       from occupancy_snapshots
+       where date > (now() at time zone 'Europe/Berlin')::date - $1::int
+       order by date, captured_at desc`,
+      [days],
+    );
+    const [occupancyCompare] = await tx.query(
+      `select
+        (select avg(occupancy_rate)::float from occupancy_snapshots
+          where date > (now() at time zone 'Europe/Berlin')::date - $1::int) as current_avg,
+        (select avg(occupancy_rate)::float from occupancy_snapshots
+          where date > (now() at time zone 'Europe/Berlin')::date - (2 * $1::int)
+            and date <= (now() at time zone 'Europe/Berlin')::date - $1::int) as previous_avg`,
+      [days],
+    );
+    const granularity = days === 1 ? "hour" : "day";
+    const bucket = granularity === "hour"
+      ? "to_char((created_at at time zone 'Europe/Berlin'), 'YYYY-MM-DD HH24:00')"
+      : "(created_at at time zone 'Europe/Berlin')::date::text";
+    const bucketWhere = granularity === "hour"
+      ? "(created_at at time zone 'Europe/Berlin')::date = (now() at time zone 'Europe/Berlin')::date"
+      : `created_at >= ((now() at time zone 'Europe/Berlin')::date - ($1::int - 1)) at time zone 'Europe/Berlin'`;
+    const inquiryRows = await tx.query(
+      `select ${bucket} as bucket,
+              cast(count(*) filter (where type='ROOM') as int) as room_count,
+              cast(count(*) filter (where type='TABLE') as int) as table_count,
+              cast(count(*) filter (where type='OCCASION') as int) as occasion_count
+       from inquiries where ${bucketWhere}
+       group by 1 order by 1`,
+      granularity === "hour" ? [] : [days],
+    );
+    const inquirySeries = {
+      granularity,
+      points: inquiryRows.map((r) => ({
+        bucket: r.bucket,
+        ROOM: r.room_count,
+        TABLE: r.table_count,
+        OCCASION: r.occasion_count,
+      })),
+    };
+    // Fixed 7-day window: this sparkline contextualizes the operative task
+    // KPIs (which stay "today") and deliberately ignores the chart range.
+    const taskRows = await tx.query(
+      `select (completed_at at time zone 'Europe/Berlin')::date::text as date, count(*)::int as value
+       from tasks
+       where completed_at >= ((now() at time zone 'Europe/Berlin')::date - 6) at time zone 'Europe/Berlin'
+       group by 1 order by 1`,
+    );
+    const recentInquiries = await tx.query(
+      `select i.request_id, i.type, i.status, i.created_at::text as created_at,
+              i.guest_name, i.arrival::text as arrival, i.departure::text as departure,
+              i.guest_count, i.payload_json->>'room' as room, i.payload_json->>'occasion' as occasion,
+              t.status as task_status, sp.display_name as task_assignee
+       from inquiries i
+       left join lateral (
+         select * from tasks where source_type='inquiry' and source_id=i.id
+         order by created_at desc limit 1
+       ) t on true
+       left join staff_profiles sp on sp.user_id=t.assignee_user_id
+       order by i.created_at desc limit 8`,
+    );
+    const actionTasks = await tx.query(
+      `select t.id, t.title, t.department, t.priority, t.status, t.due_at::text as due_at,
+              (t.due_at < now()) as overdue, sp.display_name as assignee_name
+       from tasks t
+       left join staff_profiles sp on sp.user_id=t.assignee_user_id
+       where t.status in ('OPEN','IN_PROGRESS','BLOCKED')
+       order by (t.due_at < now()) desc nulls last,
+                (t.priority='URGENT') desc,
+                (t.status='BLOCKED') desc,
+                t.due_at asc nulls last,
+                t.created_at desc
+       limit 8`,
     );
     return {
-      ...counts,
-      arrivals: occupancy?.arrivals ?? null,
-      departures: occupancy?.departures ?? null,
-      occupancy: occupancy?.occupancy_rate ?? null,
-      inquiries,
+      generated_at: clock.generated_at,
+      today: clock.today,
+      range: { id: rangeId in DASHBOARD_RANGES ? rangeId : "7tage", days },
+      counts,
+      occupancy_today: occupancyToday ?? null,
+      occupancy_series: occupancySeries,
+      occupancy_compare: occupancyCompare,
+      inquiry_series: inquirySeries,
+      task_series: taskRows,
+      recent_inquiries: recentInquiries,
+      action_tasks: actionTasks,
     };
   });
 }

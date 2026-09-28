@@ -11,10 +11,16 @@ export const getToday = createServerFn({ method: "GET" })
   });
 export const getDashboard = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
-  .handler(async ({ context }) => {
+  .validator((x: unknown) =>
+    z
+      .object({ range: z.enum(["heute", "7tage", "30tage"]).default("7tage") })
+      .strict()
+      .parse(x ?? {}),
+  )
+  .handler(async ({ context, data }) => {
     const { getSql } = await import("@/lib/db");
     const { readDashboard } = await import("../../../scripts/operations.mjs");
-    return readDashboard(await getSql(), context.staff.userId);
+    return readDashboard(await getSql(), context.staff.userId, data.range);
   });
 export const updateTask = createServerFn({ method: "POST" })
   .middleware([requireStaff])

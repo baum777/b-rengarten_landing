@@ -191,7 +191,7 @@ suite("anonymous, no profile, STAFF/admin and inactive boundaries", async () => 
   await assert.rejects(readToday(db, "unprofiled"));
   await assert.rejects(readDashboard(db, staffId));
   assert.ok(await readToday(db, staffId));
-  assert.equal((await readDashboard(db, adminId)).occupancy, null);
+  assert.equal((await readDashboard(db, adminId)).occupancy_today, null);
   await db.query("update staff_profiles set active=false where user_id=$1", [staffId]);
   await assert.rejects(readToday(db, staffId));
   await db.query("update staff_profiles set active=true where user_id=$1", [staffId]);
@@ -260,7 +260,12 @@ suite(
       department: "KITCHEN",
     });
     await assert.rejects(acknowledgeBriefing(db, staffId, privateId));
-    const [{ today }] = await db.query("select current_date::text as today");
+    // Berlin-day anchoring (not current_date): readDashboard buckets by the
+    // Berlin calendar, so fixtures must use the same "today" even when the
+    // UTC day has already rolled over.
+    const [{ today }] = await db.query(
+      "select (now() at time zone 'Europe/Berlin')::date::text as today",
+    );
     await recordOccupancy(db, adminId, {
       date: today,
       roomsTotal: 10,
@@ -270,9 +275,20 @@ suite(
       departures: null,
     });
     const kpi = await readDashboard(db, adminId);
-    assert.equal(kpi.occupancy, 0.4);
-    assert.equal(kpi.departures, null);
-    assert.equal(kpi.open_inquiries, 3);
+    assert.equal(kpi.occupancy_today.occupancy_rate, 0.4);
+    assert.equal(kpi.occupancy_today.departures, null);
+    assert.equal(kpi.counts.open_inquiries, 3);
+    assert.equal(kpi.counts.new_inquiries_today, 3);
+    assert.ok(kpi.generated_at);
+    assert.ok(kpi.today);
+    assert.equal(kpi.range.id, "7tage");
+    assert.ok(kpi.inquiry_series.granularity === "day");
+    assert.ok(kpi.recent_inquiries.length >= 3);
+    const linked = kpi.recent_inquiries.find((i) => i.guest_name === "O'Guest");
+    assert.ok(linked);
+    assert.equal(linked.task_status, "OPEN");
+    assert.equal(linked.task_assignee, null);
+    assert.ok(linked.arrival);
     await assert.rejects(
       recordOccupancy(db, staffId, {
         date: today,
@@ -283,6 +299,67 @@ suite(
         departures: 0,
       }),
     );
+  },
+);
+suite(
+  "control tower aggregation: staleness, assignment, action ordering, analytic ranges",
+  async () => {
+    await db.query(
+      `insert into inquiries(id,request_id,type,guest_name,email,arrival,guest_count,status,created_at)
+       values($1,$1,'ROOM','Old Guest','old@example.invalid','2030-01-01',2,'NEW', now() - interval '48 hours')`,
+      [randomUUID()],
+    );
+    const overdueId = await createTask(db, adminId, {
+      title: "Fix sauna lock",
+      department: "TECHNICAL",
+      dueAt: new Date(Date.now() - 3 * 3600_000).toISOString(),
+    });
+    const urgentId = await createTask(db, adminId, {
+      title: "Prepare checkout",
+      department: "RECEPTION",
+      priority: "URGENT",
+      dueAt: new Date(Date.now() + 6 * 3600_000).toISOString(),
+    });
+    await changeTask(db, adminId, { id: urgentId, assigneeUserId: staffId });
+    const blockedId = await createTask(db, adminId, { title: "Wait for printer", department: "GENERAL" });
+    await changeTask(db, adminId, { id: blockedId, status: "BLOCKED" });
+    const [{ past }] = await db.query(
+      "select ((now() at time zone 'Europe/Berlin')::date - 10)::text as past",
+    );
+    await recordOccupancy(db, adminId, {
+      date: past,
+      roomsTotal: 10,
+      roomsAvailable: 5,
+      roomsOccupied: 5,
+      arrivals: 1,
+      departures: 1,
+    });
+
+    const kpi = await readDashboard(db, adminId);
+    assert.equal(kpi.counts.stale_inquiries, 1);
+    assert.equal(kpi.counts.blocked_tasks, 1);
+    assert.ok(kpi.counts.overdue_tasks >= 1);
+    assert.equal(kpi.action_tasks[0].id, overdueId);
+    assert.equal(kpi.action_tasks[0].overdue, true);
+    assert.equal(kpi.action_tasks[1].id, urgentId);
+    assert.equal(kpi.action_tasks[1].assignee_name, "Test Identity");
+    assert.ok(kpi.occupancy_series.length >= 1);
+
+    const hourly = await readDashboard(db, adminId, "heute");
+    assert.equal(hourly.range.days, 1);
+    assert.equal(hourly.inquiry_series.granularity, "hour");
+    assert.ok(hourly.inquiry_series.points.length >= 1);
+    assert.equal(hourly.occupancy_series.length, 1);
+
+    const monthly = await readDashboard(db, adminId, "30tage");
+    assert.equal(monthly.range.days, 30);
+    assert.equal(monthly.inquiry_series.granularity, "day");
+    assert.equal(monthly.occupancy_series.length, 2);
+    assert.equal(monthly.occupancy_compare.current_avg === null, false);
+    assert.equal(monthly.occupancy_compare.previous_avg, null);
+
+    const unknown = await readDashboard(db, adminId, "nonsense");
+    assert.equal(unknown.range.id, "7tage");
   },
 );
 suite(

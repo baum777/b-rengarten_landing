@@ -17,17 +17,84 @@ export interface Today {
   }>;
   briefings: Array<{ id: string; title: string; body: string; priority: string; read: boolean }>;
 }
-export interface Dashboard {
+export type DashboardRangeId = "heute" | "7tage" | "30tage";
+
+export interface DashboardCounts {
   open_inquiries: number;
   new_inquiries_today: number;
+  stale_inquiries: number;
+  oldest_new_inquiry_at: string | null;
   open_tasks: number;
   overdue_tasks: number;
+  blocked_tasks: number;
   completed_tasks_today: number;
   active_staff: number;
+}
+
+export interface OccupancyToday {
+  date: string;
+  occupancy_rate: number;
   arrivals: number | null;
   departures: number | null;
-  occupancy: number | null;
-  inquiries: Array<{ request_id: string; type: string; status: string; created_at: string }>;
+  rooms_total: number;
+  rooms_occupied: number;
+  captured_at: string;
+  source: string;
+}
+
+export interface DashboardSeriesPoint {
+  date: string;
+  value: number;
+}
+
+export interface DashboardInquiryPoint {
+  bucket: string;
+  ROOM: number;
+  TABLE: number;
+  OCCASION: number;
+}
+
+export interface DashboardRecentInquiry {
+  request_id: string;
+  type: string;
+  status: string;
+  created_at: string;
+  guest_name: string;
+  arrival: string | null;
+  departure: string | null;
+  guest_count: number;
+  room: string | null;
+  occasion: string | null;
+  task_status: string | null;
+  task_assignee: string | null;
+}
+
+export interface DashboardActionTask {
+  id: string;
+  title: string;
+  department: string;
+  priority: string;
+  status: string;
+  due_at: string | null;
+  overdue: boolean;
+  assignee_name: string | null;
+}
+
+export interface Dashboard {
+  generated_at: string;
+  today: string;
+  range: { id: DashboardRangeId; days: number };
+  counts: DashboardCounts;
+  occupancy_today: OccupancyToday | null;
+  occupancy_series: DashboardSeriesPoint[];
+  occupancy_compare: { current_avg: number | null; previous_avg: number | null };
+  inquiry_series: {
+    granularity: "hour" | "day";
+    points: DashboardInquiryPoint[];
+  };
+  task_series: DashboardSeriesPoint[];
+  recent_inquiries: DashboardRecentInquiry[];
+  action_tasks: DashboardActionTask[];
 }
 export const departments: string[];
 export const taskInput: z.ZodType;
@@ -40,7 +107,7 @@ export function publishBriefing(db: Database, actor: string, input: unknown): Pr
 export function acknowledgeBriefing(db: Database, actor: string, id: string): Promise<void>;
 export function recordOccupancy(db: Database, actor: string, input: unknown): Promise<string>;
 export function readToday(db: Database, actor: string): Promise<Today>;
-export function readDashboard(db: Database, actor: string): Promise<Dashboard>;
+export function readDashboard(db: Database, actor: string, rangeId?: DashboardRangeId): Promise<Dashboard>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(
