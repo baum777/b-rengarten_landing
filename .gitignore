@@ -11,6 +11,7 @@ coverage
 .env.*
 !.env.example
 .grok
+.mimosa
 artifacts
 screenshots
 tmp
