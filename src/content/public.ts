@@ -93,14 +93,14 @@ export const publicContent = {
   timeline: [
     {
       era: "Vor 2009",
-      text: "Ein Haus mit Gastronomie-Tradition, seit Langem mit Veranstaltungen und dem Rutenfest verbunden.",
+      text: "Ein Haus mit Gastronomie-Tradition.",
     },
     { era: "2009", text: conversion2009 },
     { era: "2018", text: extension2018 },
-    { era: "Heute", text: "Ein bekanntes Haus. Ein neues Kapitel." },
+    { era: "Heute", text: "Die Karte entsteht neu — ein neues Kapitel im alten Haus." },
   ],
-  gardenStory: `${gardenChestnut} Im Sommer lebt das Haus nach draußen: gedeckte Tische unter den alten Kronen, und die Stadt ist nah.`,
-  architectureStory: `${architecture} Eiche, Messing und große Öffnungen in den Garten prägen die Räume — die Materialsprache, in der auch diese Seite gehalten ist.`,
+  gardenStory: `${gardenChestnut} Im Sommer zieht das Haus nach draußen: gedeckte Tische unter den Kronen, die Altstadt gleich dahinter.`,
+  architectureStory: `${architecture} Eiche, Messing und große Öffnungen in den Garten prägen die Räume: Drinnen und draußen gehen hier ineinander über.`,
   rutenfestStory: eventHistory,
   occasions,
   faqs,

@@ -68,7 +68,7 @@ function HomeHero() {
         <p className="mt-5 text-lg text-paper-50/85">{publicContent.descriptor}</p>
         <div className="mt-12 flex items-center gap-4" aria-hidden>
           <span className="h-px w-14 bg-paper-50/50" />
-          <p className="micro text-paper-50/70">Ein Haus. Weiterlesen.</p>
+          <p className="micro text-paper-50/70">Kommen Sie herein.</p>
         </div>
       </div>
     </section>
@@ -83,9 +83,9 @@ function HouseStatement() {
         <p className="eyebrow text-wine-700">{publicContent.name}</p>
         <h2 className="mt-6 text-display-lg">Ein Haus in Ravensburg.</h2>
         <p className="mt-8 max-w-2xl text-xl leading-relaxed text-charcoal-600">
-          Hotel, Restaurant und Biergarten teilen sich dieselben Mauern,
-          denselben Garten, dieselbe Geschichte. Wer hier ankommt, kommt in
-          einem Haus an — nicht in drei Abteilungen.
+          Hotel, Restaurant und Biergarten teilen sich Mauern, Garten und
+          Geschichte. Wer bei uns ankommt, kommt in einem Haus an — nicht in
+          drei Abteilungen.
         </p>
         <p className="mt-10 font-display text-2xl italic text-green-950 md:text-3xl">
           „{publicContent.manifesto}“
@@ -156,8 +156,8 @@ function HotelSection() {
             {publicContent.roomHeadline}
           </p>
           <p className="mt-5 max-w-md text-lg leading-relaxed text-paper-50/85">
-            Klein genug, dass der Empfang persönlich bleibt — und mitten in der
-            Stadt, an der Schützenstraße.
+            So klein, dass man am Empfang ein Gesicht hat und keine
+            Buchungsnummer — mitten in der Stadt, an der Schützenstraße.
           </p>
           <Link
             to="/hotel"
@@ -201,9 +201,9 @@ function TableSection() {
             Restaurant und Garten gehören zusammen.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-charcoal-600">
-            Große Fenster, Eichentische, der Blick fällt in die Bäume: Der Raum
-            selbst macht die Einleitung. Die neue Karte entsteht — was heute am
-            Tisch gilt, besprechen wir persönlich.
+            Große Fenster, Eichentische, und der Blick geht direkt in die
+            Bäume. Die neue Karte entsteht noch — was heute auf den Tisch
+            kommt, erzählen wir Ihnen gern beim Platznehmen.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -238,8 +238,9 @@ function GatherBand() {
           Familien · Freunde · Gruppen · Kultur
         </p>
         <p className="mt-6 max-w-2xl text-lg leading-relaxed text-charcoal-600">
-          Ob festliche Runde oder kleiner Anlass: Der Rahmen dafür wächst aus
-          dem Haus heraus — Garten, Stuben und die Erfahrung langer Festtage.
+          Manche Abende wollen einfach nicht enden. Ob festliche Runde oder
+          kleiner Anlass: Dafür haben wir Garten, Stuben und die Erfahrung
+          langer Festtage.
         </p>
         <Link
           to="/anlaesse"
