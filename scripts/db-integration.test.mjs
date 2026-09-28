@@ -19,6 +19,7 @@ import {
   readDashboard,
   readInquiries,
   changeInquiryStatus,
+  readTasks,
   changeStaff,
 } from "./operations.mjs";
 const url = process.env.TEST_DATABASE_URL;
@@ -590,3 +591,63 @@ suite(
     await assert.rejects(readInquiries(db, staffId));
   },
 );
+suite("tasks page: overdue/open/in-progress/blocked grouping and today completion", async () => {
+  // the bootstrap-closure suite removes the original admin profile: mint a
+  // fresh admin actor for this page
+  const tasksAdminId = randomUUID();
+  await db.query(
+    `insert into "user"(id,name,email,"emailVerified","createdAt","updatedAt")
+     values($1,'Tasks Admin','tasks-admin@example.invalid',true,now(),now())`,
+    [tasksAdminId],
+  );
+  await db.query(
+    `insert into staff_profiles(id,user_id,email,display_name,role,department)
+     values($1,$2,'tasks-admin@example.invalid','Tasks Admin','ADMIN','MANAGEMENT')`,
+    [randomUUID(), tasksAdminId],
+  );
+
+  const base = { title: "Aufgaben Test", department: "HOUSEKEEPING" };
+  const past = await createTask(db, tasksAdminId, {
+    ...base,
+    title: "Aufgabe überfällig",
+    dueAt: new Date(Date.now() - 3 * 3600e3).toISOString(),
+  });
+  const future = await createTask(db, tasksAdminId, {
+    ...base,
+    title: "Aufgabe mit Fälligkeit",
+    dueAt: new Date(Date.now() + 86400e3).toISOString(),
+    priority: "IMPORTANT",
+  });
+  const noDue = await createTask(db, tasksAdminId, { ...base, title: "Aufgabe ohne Fälligkeit" });
+
+  const page = await readTasks(db, tasksAdminId);
+  const ids = (group) => page[group].map((t) => t.id);
+  assert.ok(ids("overdue").includes(past)); // shared DB: other suites add overdue tasks too
+  assert.ok(ids("open").includes(future) && ids("open").includes(noDue));
+  // open section orders dated tasks before undated ones
+  assert.ok(ids("open").indexOf(future) < ids("open").indexOf(noDue));
+  assert.equal(page.counts.open, page.open.length);
+  const overdueRow = page.overdue.find((t) => t.id === past);
+  assert.equal(overdueRow.overdue, true);
+  assert.equal(overdueRow.assignee_id, null);
+
+  // full transition path with regrouping: start, block, resume, complete
+  await changeTask(db, tasksAdminId, { id: future, status: "IN_PROGRESS" });
+  let p2 = await readTasks(db, tasksAdminId);
+  assert.ok(p2.in_progress.some((t) => t.id === future));
+  assert.equal(p2.open.some((t) => t.id === future), false);
+  await changeTask(db, tasksAdminId, { id: future, status: "BLOCKED" });
+  p2 = await readTasks(db, tasksAdminId);
+  assert.ok(p2.blocked.some((t) => t.id === future));
+  await changeTask(db, tasksAdminId, { id: future, status: "IN_PROGRESS" });
+  await changeTask(db, tasksAdminId, { id: future, status: "DONE" });
+  p2 = await readTasks(db, tasksAdminId);
+  assert.equal(p2.done_today.some((t) => t.id === future), true);
+  assert.equal(p2.counts.done_today, p2.done_today.length);
+
+  // self-assignment on an unassigned open task
+  await changeTask(db, tasksAdminId, { id: noDue, assigneeUserId: tasksAdminId });
+  const assigned = (await readTasks(db, tasksAdminId)).open.find((t) => t.id === noDue);
+  assert.equal(assigned.assignee_id, tasksAdminId);
+  assert.equal(assigned.assignee_name, "Tasks Admin");
+});

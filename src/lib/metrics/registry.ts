@@ -188,7 +188,7 @@ export const METRICS: MetricDefinition[] = [
     source: "tasks",
     measure: "Aufgaben mit Status „Offen“, „In Arbeit“ oder „Blockiert“.",
     unit: "count",
-    action: { label: "Meine Aufgaben öffnen", href: "/intern/heute" },
+    action: { label: "Aufgaben öffnen", href: "/intern/aufgaben" },
     measurement: "AVAILABLE",
   },
   {
@@ -210,7 +210,7 @@ export const METRICS: MetricDefinition[] = [
       provisional: true,
       note: "Jede Überschreitung gilt als kritisch; Bestätigung durch den Betrieb steht aus.",
     },
-    action: { label: "Meine Aufgaben öffnen", href: "/intern/heute" },
+    action: { label: "Aufgaben öffnen", href: "/intern/aufgaben" },
     measurement: "AVAILABLE",
     attention: {
       title: (value) => `${value} ${plural(value, "Aufgabe", "Aufgaben")} überfällig`,

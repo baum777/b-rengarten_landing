@@ -152,6 +152,45 @@ export interface InquiriesPage {
   in_progress: InquiryRow[];
   other: InquiryRow[];
 }
+export interface TaskRow {
+  id: string;
+  title: string;
+  description: string;
+  department: string;
+  priority: "NORMAL" | "IMPORTANT" | "URGENT";
+  status: "OPEN" | "IN_PROGRESS" | "BLOCKED";
+  assignee_id: string | null;
+  assignee_name: string | null;
+  due_at: string | null;
+  created_at: string;
+  source_type: string | null;
+  source_id: string | null;
+  overdue: boolean;
+}
+export interface TasksDoneRow {
+  id: string;
+  title: string;
+  department: string;
+  priority: "NORMAL" | "IMPORTANT" | "URGENT";
+  assignee_name: string | null;
+  completed_at: string;
+}
+export interface TasksPage {
+  generated_at: string;
+  today: string;
+  counts: {
+    open: number;
+    overdue: number;
+    in_progress: number;
+    blocked: number;
+    done_today: number;
+  };
+  overdue: TaskRow[];
+  open: TaskRow[];
+  in_progress: TaskRow[];
+  blocked: TaskRow[];
+  done_today: TasksDoneRow[];
+}
 export const departments: string[];
 export const taskInput: z.ZodType;
 export const briefingInput: z.ZodType;
@@ -176,6 +215,7 @@ export function readDashboard(
 ): Promise<Dashboard>;
 export function readInquiries(db: Database, actor: string): Promise<InquiriesPage>;
 export function changeInquiryStatus(db: Database, actor: string, input: unknown): Promise<void>;
+export function readTasks(db: Database, actor: string): Promise<TasksPage>;
 export function changeStaff(db: Database, actor: string, input: unknown): Promise<void>;
 
 export function event(

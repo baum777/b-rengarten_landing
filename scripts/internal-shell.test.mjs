@@ -27,6 +27,12 @@ describe("internal shell: password self-service", () => {
     );
   });
 
+  it("shell lists the tasks route behind the read-all capability", () => {
+    assert.ok(
+      shell.includes('{ to: "/intern/aufgaben", label: "Aufgaben", capability: "tasks:read:all" }'),
+    );
+  });
+
   it("capability is optional and only self-service items omit it", () => {
     assert.ok(shell.includes("capability?: Capability"));
     assert.match(shell, /item\.capability === undefined \|\| can\(/);

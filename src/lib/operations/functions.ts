@@ -58,6 +58,14 @@ export const setInquiryStatus = createServerFn({ method: "POST" })
     await changeInquiryStatus(await getSql(), context.staff.userId, data);
     return { ok: true };
   });
+export const getTasks = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .validator((x: unknown) => z.object({}).strict().parse(x ?? {}))
+  .handler(async ({ context }) => {
+    const { getSql } = await import("@/lib/db");
+    const { readTasks } = await import("../../../scripts/operations.mjs");
+    return readTasks(await getSql(), context.staff.userId);
+  });
 export const updateTask = createServerFn({ method: "POST" })
   .middleware([requireStaff])
   .validator((x: unknown) =>

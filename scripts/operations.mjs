@@ -669,3 +669,74 @@ export async function changeInquiryStatus(db, actor, input) {
     });
   });
 }
+export async function readTasks(db, actor) {
+  return db.transaction(async (tx) => {
+    await staff(tx, actor, true);
+    const [clock] = await tx.query(
+      "select now()::text as generated_at, (now() at time zone 'Europe/Berlin')::date::text as today",
+    );
+    // Active tasks with their assignee; group assignment (overdue vs open vs
+    // in progress vs blocked) happens here so every consumer shares one
+    // definition of overdue: active with a due date in the past.
+    const rows = await tx.query(
+      `select t.id, t.title, t.description, t.department, t.priority, t.status,
+              t.assignee_user_id as assignee_id, p.display_name as assignee_name,
+              t.due_at::text as due_at, t.created_at::text as created_at,
+              t.source_type, t.source_id
+       from tasks t
+       left join staff_profiles p on p.user_id = t.assignee_user_id
+       where t.status in ('OPEN','IN_PROGRESS','BLOCKED')
+       order by (t.due_at is null), t.due_at asc, t.created_at asc
+       limit 200`,
+    );
+    const now = Date.parse(clock.generated_at);
+    const active = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      department: r.department,
+      priority: r.priority,
+      status: r.status,
+      assignee_id: r.assignee_id,
+      assignee_name: r.assignee_name,
+      due_at: r.due_at,
+      created_at: r.created_at,
+      source_type: r.source_type,
+      source_id: r.source_id,
+      overdue: r.due_at !== null && Date.parse(r.due_at) < now,
+    }));
+    const overdue = active.filter((t) => t.overdue);
+    const inProgress = active.filter((t) => !t.overdue && t.status === "IN_PROGRESS");
+    const blocked = active.filter((t) => !t.overdue && t.status === "BLOCKED");
+    const open = active.filter(
+      (t) => !t.overdue && t.status === "OPEN" && !inProgress.includes(t) && !blocked.includes(t),
+    );
+    const doneToday = await tx.query(
+      `select t.id, t.title, t.department, t.priority,
+              p.display_name as assignee_name, t.completed_at::text as completed_at
+       from tasks t
+       left join staff_profiles p on p.user_id = t.assignee_user_id
+       where t.status='DONE'
+         and (t.completed_at at time zone 'Europe/Berlin')::date
+             = (now() at time zone 'Europe/Berlin')::date
+       order by t.completed_at desc
+       limit 50`,
+    );
+    return {
+      generated_at: clock.generated_at,
+      today: clock.today,
+      counts: {
+        open: open.length,
+        overdue: overdue.length,
+        in_progress: inProgress.length,
+        blocked: blocked.length,
+        done_today: doneToday.length,
+      },
+      overdue,
+      open,
+      in_progress: inProgress,
+      blocked,
+      done_today: doneToday,
+    };
+  });
+}

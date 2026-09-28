@@ -37,7 +37,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Betrieb",
-    items: [{ to: "/intern/anfragen", label: "Anfragen", capability: "inquiries:manage" }],
+    items: [
+      { to: "/intern/anfragen", label: "Anfragen", capability: "inquiries:manage" },
+      { to: "/intern/aufgaben", label: "Aufgaben", capability: "tasks:read:all" },
+    ],
   },
   {
     label: "Konto",
